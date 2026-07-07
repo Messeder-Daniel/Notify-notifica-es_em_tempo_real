@@ -1,20 +1,35 @@
 package main
 
 import (
+	"context"
 	"log"
 
 	"github.com/gin-gonic/gin"
+	"github.com/messederdaniel/real-time-notifications/backend/internal/config"
+	"github.com/messederdaniel/real-time-notifications/backend/internal/database"
 	"github.com/messederdaniel/real-time-notifications/backend/internal/routes"
 )
 
 func main() {
+	cfg := config.LoadConfig()
+
+	dbPool, err := database.NewPostgresConnection(context.Background(), cfg.DatabaseURL)
+	if err != nil {
+		log.Fatalf("Failed to connect to database: %v", err)
+	}
+	defer dbPool.Close()
+
 	router := gin.Default()
 
-	routes.RegisterRoutes(router)
+	if err := router.SetTrustedProxies(nil); err != nil {
+		log.Fatalf("Failed to set trusted proxies: %v", err)
+	}
 
-	log.Println("Starting server on port 8080")
+	routes.RegisterRoutes(router, dbPool)
 
-	if err := router.Run(":8080"); err != nil {
+	log.Printf("Starting server on port %s", cfg.ServerPort)
+
+	if err := router.Run(":" + cfg.ServerPort); err != nil {
 		log.Fatalf("Failed to start server: %v", err)
 	}
 }
