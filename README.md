@@ -70,3 +70,29 @@ Resposta esperada:
   "status": "ok"
 }
 ```
+### Executar migrations
+
+Com o PostgreSQL rodando, execute na raiz do projeto:
+
+```bash
+sudo docker exec -i realtime_notifications_postgres psql -U postgres -d notifications_db < backend/migrations/001_create_initial_schema.sql
+```
+
+Verificar tabelas criadas:
+
+```bash
+sudo docker exec -it realtime_notifications_postgres psql -U postgres -d notifications_db -c "\dt"
+```
+
+Verificar usuários iniciais:
+
+```bash
+sudo docker exec -it realtime_notifications_postgres psql -U postgres -d notifications_db -c "SELECT name, email FROM users;"
+```
+
+Usuários iniciais:
+
+| Nome | Email | Senha |
+|---|---|---|
+| Alice | `alice@example.com` | `password` |
+| Bob | `bob@example.com` | `password` |

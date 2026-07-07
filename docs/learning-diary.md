@@ -248,3 +248,84 @@ A rota `/health` retorna erro indicando que o banco está desconectado.
 #### 5. Por que o PostgreSQL é importante neste projeto?
 
 Porque ele armazenará usuários e notificações de forma persistente.
+## Etapa 5 — Migrations iniciais
+
+### O que aprendi
+
+Nesta etapa, aprendi a criar a estrutura inicial do banco de dados usando uma migration SQL.
+
+Aprendi que o PostgreSQL organiza dados em tabelas e que o projeto precisa de tabelas para usuários e notificações.
+
+Também aprendi a criar dados iniciais de teste, chamados seeds.
+
+### Conceitos novos
+
+#### Migration
+
+Migration é um arquivo que descreve alterações no banco de dados, como criação de tabelas, índices e dados iniciais.
+
+#### Tabela
+
+Tabela é uma estrutura do banco composta por colunas e linhas.
+
+#### Chave primária
+
+Chave primária é o campo que identifica cada registro de forma única.
+
+#### UUID
+
+UUID é um identificador único usado para evitar colisões e dificultar previsibilidade.
+
+#### Chave estrangeira
+
+Chave estrangeira é um campo que cria relação entre tabelas.
+
+No projeto, `notifications.user_id` aponta para `users.id`.
+
+#### Índice
+
+Índice é uma estrutura que melhora a velocidade de consultas no banco.
+
+#### Seed
+
+Seed é a inserção de dados iniciais para facilitar testes e demonstrações.
+
+### Dificuldades comuns
+
+#### Por que usar migration?
+
+Para que qualquer pessoa consiga recriar a estrutura do banco de forma previsível.
+
+#### Por que usar UUID?
+
+Porque UUIDs são identificadores únicos e menos previsíveis que números sequenciais.
+
+#### Por que criar índices?
+
+Porque o sistema vai consultar notificações por usuário e por status de leitura. Índices ajudam essas consultas a ficarem mais rápidas.
+
+#### Por que usar `ON CONFLICT DO NOTHING`?
+
+Para permitir executar a migration mais de uma vez sem duplicar usuários.
+
+### Perguntas que um professor poderia fazer
+
+#### 1. Para que serve uma migration?
+
+Serve para criar ou alterar a estrutura do banco de dados de forma controlada.
+
+#### 2. Qual é a relação entre users e notifications?
+
+Um usuário pode ter várias notificações. Cada notificação pertence a um usuário.
+
+#### 3. Por que existe o campo `is_read`?
+
+Para indicar se a notificação já foi lida pelo usuário.
+
+#### 4. Para que serve o campo `read_at`?
+
+Para registrar quando a notificação foi marcada como lida.
+
+#### 5. Por que a senha não foi salva em texto puro?
+
+Porque salvar senhas em texto puro é inseguro. Usamos um hash bcrypt.
