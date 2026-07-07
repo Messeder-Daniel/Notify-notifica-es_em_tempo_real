@@ -133,27 +133,6 @@ Porque o projeto vai crescer. Se deixarmos tudo no `main.go`, ele ficará difíc
 
 A pasta `internal` é uma convenção especial do Go. Pacotes dentro de `internal` só podem ser importados por código dentro do mesmo projeto pai. Isso ajuda a proteger partes internas da aplicação.
 
-### Perguntas que um professor poderia fazer
-
-#### 1. Por que você separou handlers e routes?
-
-Para separar responsabilidades. A camada de rotas registra os caminhos da API, enquanto os handlers contêm a lógica de resposta das requisições.
-
-#### 2. Qual é a função do `main.go` agora?
-
-Inicializar o router, registrar as rotas e iniciar o servidor.
-
-#### 3. O que é um handler?
-
-É a função ou método que processa uma requisição HTTP e retorna uma resposta.
-
-#### 4. Por que usar a pasta `internal`?
-
-Porque ela indica que aqueles pacotes são internos da aplicação e não devem ser usados como biblioteca externa por outros projetos.
-
-#### 5. O comportamento da rota `/health` mudou?
-
-Não. A resposta continua a mesma. O que mudou foi apenas a organização interna do código.
 ## Etapa 4 — PostgreSQL com Docker Compose
 
 ### O que aprendi
@@ -227,27 +206,6 @@ Porque esse arquivo pode conter senhas, tokens e informações sensíveis.
 
 Porque a API pode estar rodando, mas o banco pode estar fora do ar. O health check ajuda a identificar esse tipo de problema.
 
-### Perguntas que um professor poderia fazer
-
-#### 1. Para que serve o Docker Compose?
-
-Serve para definir e executar containers necessários ao projeto, como o PostgreSQL.
-
-#### 2. O que é uma variável de ambiente?
-
-É uma configuração externa ao código, usada para adaptar a aplicação a diferentes ambientes.
-
-#### 3. O que é um pool de conexões?
-
-É um conjunto de conexões abertas com o banco que podem ser reutilizadas pela aplicação.
-
-#### 4. O que acontece se o banco estiver fora do ar?
-
-A rota `/health` retorna erro indicando que o banco está desconectado.
-
-#### 5. Por que o PostgreSQL é importante neste projeto?
-
-Porque ele armazenará usuários e notificações de forma persistente.
 ## Etapa 5 — Migrations iniciais
 
 ### O que aprendi
@@ -308,24 +266,62 @@ Porque o sistema vai consultar notificações por usuário e por status de leitu
 
 Para permitir executar a migration mais de uma vez sem duplicar usuários.
 
-### Perguntas que um professor poderia fazer
 
-#### 1. Para que serve uma migration?
+## Etapa 6 — Models do backend
 
-Serve para criar ou alterar a estrutura do banco de dados de forma controlada.
+### O que aprendi
 
-#### 2. Qual é a relação entre users e notifications?
+Nesta etapa, aprendi a criar models em Go para representar as principais entidades do sistema.
 
-Um usuário pode ter várias notificações. Cada notificação pertence a um usuário.
+Foram criados models para usuários e notificações.
 
-#### 3. Por que existe o campo `is_read`?
+Também aprendi a diferença entre uma struct usada internamente e uma struct usada como resposta da API.
 
-Para indicar se a notificação já foi lida pelo usuário.
+### Conceitos novos
 
-#### 4. Para que serve o campo `read_at`?
+#### Struct
 
-Para registrar quando a notificação foi marcada como lida.
+Struct é uma estrutura de dados em Go que agrupa campos relacionados.
 
-#### 5. Por que a senha não foi salva em texto puro?
+#### Tags JSON
 
-Porque salvar senhas em texto puro é inseguro. Usamos um hash bcrypt.
+Tags JSON definem como os campos da struct aparecem quando são convertidos para JSON.
+
+#### DTO
+
+DTO significa Data Transfer Object.
+
+É um objeto usado para transportar dados entre camadas ou entre cliente e servidor.
+
+Exemplos criados nesta etapa:
+
+- `LoginRequest`
+- `LoginResponse`
+- `CreateNotificationRequest`
+
+#### Campo sensível
+
+Campo sensível é qualquer informação que não deve ser exposta publicamente.
+
+No projeto, `PasswordHash` é sensível e por isso usa `json:"-"`.
+
+#### Campo nullable
+
+Campo nullable é um campo que pode não ter valor.
+
+No projeto, `ReadAt` pode ser nulo porque uma notificação pode ainda não ter sido lida.
+
+### Dificuldades comuns
+
+#### Por que criar `UserResponse` se já existe `User`?
+
+Porque `User` contém `PasswordHash`, que não deve ser exposto para o frontend.
+
+#### Por que `ReadAt` é ponteiro?
+
+Porque ele pode ser nulo. Uma notificação não lida ainda não possui data de leitura.
+
+#### Por que usar tags `binding`?
+
+Porque futuramente o Gin poderá validar automaticamente campos obrigatórios das requisições.
+

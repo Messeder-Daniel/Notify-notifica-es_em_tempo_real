@@ -96,3 +96,11 @@ Usuários iniciais:
 |---|---|---|
 | Alice | `alice@example.com` | `password` |
 | Bob | `bob@example.com` | `password` |
+### Models do backend
+
+Até esta etapa, foram criados os models principais do sistema:
+
+```text
+backend/internal/models/
+├── user.go
+└── notification.go
