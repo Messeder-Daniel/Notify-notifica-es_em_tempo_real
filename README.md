@@ -112,3 +112,12 @@ Até esta etapa, foram criados repositories para acesso ao banco:
 backend/internal/repositories/
 ├── user_repository.go
 └── notification_repository.go
+### Services do backend
+
+Até esta etapa, foi criada a camada de services:
+
+```text
+backend/internal/services/
+├── auth_service.go
+├── notification_service.go
+└── errors.go

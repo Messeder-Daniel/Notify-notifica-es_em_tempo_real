@@ -380,3 +380,16 @@ Porque no banco o ID é UUID, mas no model Go estamos usando string. O cast para
 #### Por que `MarkAsRead` recebe também o `userID`?
 
 Para garantir que o usuário só consiga alterar notificações que pertencem a ele.
+
+## Etapa 8 — Services
+
+Nesta etapa, criei a camada de services, responsável pelas regras de negócio da aplicação.
+
+Aprendi que repositories acessam o banco, enquanto services aplicam validações e regras antes de chamar os repositories.
+
+Também aprendi sobre bcrypt, usado para comparar senhas com hashes de forma segura.
+
+A aplicação passa a seguir este fluxo:
+
+```text
+handlers -> services -> repositories -> database
