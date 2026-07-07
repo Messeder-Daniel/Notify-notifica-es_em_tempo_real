@@ -325,3 +325,58 @@ Porque ele pode ser nulo. Uma notificação não lida ainda não possui data de 
 
 Porque futuramente o Gin poderá validar automaticamente campos obrigatórios das requisições.
 
+## Etapa 7 — Repositories
+
+### O que aprendi
+
+Nesta etapa, aprendi a criar repositories para acessar o PostgreSQL a partir do backend Go.
+
+Aprendi que repositories concentram as queries SQL e evitam que handlers ou services precisem conhecer detalhes do banco de dados.
+
+### Conceitos novos
+
+#### Repository
+
+Repository é uma camada responsável por acessar e manipular dados no banco.
+
+#### Query parametrizada
+
+Query parametrizada usa placeholders como `$1`, `$2` e `$3`.
+
+Isso evita concatenar strings manualmente e reduz risco de SQL Injection.
+
+#### SQL Injection
+
+SQL Injection é uma falha de segurança em que dados maliciosos são inseridos em uma consulta SQL.
+
+Usar parâmetros ajuda a evitar esse problema.
+
+#### QueryRow
+
+`QueryRow` é usado quando esperamos apenas uma linha como resultado.
+
+#### Query
+
+`Query` é usado quando esperamos várias linhas como resultado.
+
+#### Scan
+
+`Scan` copia os valores retornados pelo banco para variáveis ou campos de uma struct.
+
+#### rows.Close
+
+`rows.Close` libera recursos associados ao resultado de uma query.
+
+### Dificuldades comuns
+
+#### Por que o repository retorna erro?
+
+Porque operações de banco podem falhar por vários motivos, como conexão indisponível, SQL errado ou dados inválidos.
+
+#### Por que usar `id::text` nas queries?
+
+Porque no banco o ID é UUID, mas no model Go estamos usando string. O cast para texto simplifica o `Scan`.
+
+#### Por que `MarkAsRead` recebe também o `userID`?
+
+Para garantir que o usuário só consiga alterar notificações que pertencem a ele.

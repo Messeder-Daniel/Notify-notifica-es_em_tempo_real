@@ -104,3 +104,11 @@ Até esta etapa, foram criados os models principais do sistema:
 backend/internal/models/
 ├── user.go
 └── notification.go
+### Repositories do backend
+
+Até esta etapa, foram criados repositories para acesso ao banco:
+
+```text
+backend/internal/repositories/
+├── user_repository.go
+└── notification_repository.go
