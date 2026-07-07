@@ -64,3 +64,93 @@ Porque commits pequenos facilitam entender o histórico do projeto e corrigir pr
 ### Resumo da etapa
 
 Nesta etapa, o foco foi preparar a base do projeto. Ainda não houve implementação de código funcional, mas a estrutura documental inicial foi criada para guiar o desenvolvimento. O documento foi construído com auxílio de Inteligência Artifícial. 
+
+## Etapa 3 — Organização inicial do backend
+
+### O que aprendi
+
+Nesta etapa, aprendi a organizar melhor o backend separando responsabilidades.
+
+Antes, o arquivo `main.go` criava o servidor e também definia diretamente a rota `/health`.
+
+Agora, o `main.go` apenas inicia a aplicação e chama a função responsável por registrar as rotas.
+
+A lógica da rota `/health` foi movida para um handler específico.
+
+### Conceitos novos
+
+#### Handler
+
+Um handler é a função ou método responsável por responder uma requisição HTTP.
+
+No projeto, o método `Check` do `HealthHandler` responde a rota `/health`.
+
+#### Rotas
+
+Rotas são os caminhos da API.
+
+Exemplo:
+
+```text
+GET /health
+```
+
+A camada `routes` centraliza o registro desses caminhos.
+
+#### Separação de responsabilidades
+
+Separar responsabilidades significa evitar que um único arquivo ou função faça coisas demais.
+
+Neste projeto:
+
+- `main.go` inicia o servidor;
+- `routes.go` registra as rotas;
+- `health_handler.go` responde a requisição de health check.
+
+#### Constructor em Go
+
+Go não tem construtores como algumas linguagens orientadas a objetos.
+
+Mesmo assim, é comum criar funções como:
+
+```go
+func NewHealthHandler() *HealthHandler
+```
+
+para construir uma struct de forma clara.
+
+### Dificuldades comuns
+
+#### Por que criar uma struct vazia?
+
+Mesmo que `HealthHandler` esteja vazio agora, essa estrutura prepara o projeto para receber dependências no futuro, como services.
+
+#### Por que não deixar tudo no `main.go`?
+
+Porque o projeto vai crescer. Se deixarmos tudo no `main.go`, ele ficará difícil de manter.
+
+#### O que é `internal` em Go?
+
+A pasta `internal` é uma convenção especial do Go. Pacotes dentro de `internal` só podem ser importados por código dentro do mesmo projeto pai. Isso ajuda a proteger partes internas da aplicação.
+
+### Perguntas que um professor poderia fazer
+
+#### 1. Por que você separou handlers e routes?
+
+Para separar responsabilidades. A camada de rotas registra os caminhos da API, enquanto os handlers contêm a lógica de resposta das requisições.
+
+#### 2. Qual é a função do `main.go` agora?
+
+Inicializar o router, registrar as rotas e iniciar o servidor.
+
+#### 3. O que é um handler?
+
+É a função ou método que processa uma requisição HTTP e retorna uma resposta.
+
+#### 4. Por que usar a pasta `internal`?
+
+Porque ela indica que aqueles pacotes são internos da aplicação e não devem ser usados como biblioteca externa por outros projetos.
+
+#### 5. O comportamento da rota `/health` mudou?
+
+Não. A resposta continua a mesma. O que mudou foi apenas a organização interna do código.

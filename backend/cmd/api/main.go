@@ -2,20 +2,15 @@ package main
 
 import (
 	"log"
-	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/messederdaniel/real-time-notifications/backend/internal/routes"
 )
 
 func main() {
 	router := gin.Default()
 
-	router.GET("/health", func(ctx *gin.Context) {
-		ctx.JSON(http.StatusOK, gin.H{
-			"status":  "ok",
-			"message": "API is running",
-		})
-	})
+	routes.RegisterRoutes(router)
 
 	log.Println("Starting server on port 8080")
 
