@@ -1,326 +1,433 @@
-# Sistema de Notificações em Tempo Real
+# Real-Time Notifications
 
-Este projeto é um sistema de notificações em tempo real desenvolvido com Golang, Gin Framework, WebSockets, PostgreSQL, Vite e TypeScript.
+Sistema de notificações em tempo real usando **WebSockets**, desenvolvido com:
 
-O objetivo é permitir que usuários autenticados recebam notificações instantaneamente no frontend por meio de uma conexão WebSocket, mantendo também o histórico das notificações persistido em banco de dados.
+- **Backend:** Go + Gin
+- **Frontend:** Vite + TypeScript
+- **Banco de dados:** PostgreSQL
+- **Tempo real:** WebSocket
+- **Autenticação:** JWT
+- **Ambiente:** Docker Compose para o PostgreSQL
 
-## Objetivos do projeto
+O projeto permite que um usuário faça login, visualize suas notificações, crie novas notificações, marque notificações como lidas e receba notificações em tempo real pelo navegador.
 
-* Construir uma API backend em Golang usando Gin.
-* Implementar autenticação simples com JWT.
-* Criar uma conexão WebSocket autenticada.
-* Gerenciar clientes conectados em tempo real.
-* Enviar notificações instantâneas para usuários conectados.
-* Persistir notificações no PostgreSQL.
-* Permitir consulta ao histórico de notificações.
-* Permitir marcação de notificações como lidas.
-* Criar um frontend com Vite e TypeScript.
-* Implementar reconexão automática no WebSocket.
-* Documentar a arquitetura, execução e decisões técnicas.
+---
 
-## Tecnologias utilizadas
+## Funcionalidades
 
-### Backend
+- Autenticação de usuário com JWT.
+- API HTTP protegida por token.
+- Cadastro/listagem de notificações.
+- Marcação de notificações como lidas.
+- Persistência em PostgreSQL.
+- Conexão WebSocket autenticada.
+- Envio de notificações em tempo real.
+- Frontend em Vite + TypeScript.
+- Dashboard com status da conexão WebSocket.
+- Contadores de notificações totais e não lidas.
 
-* Golang
-* Gin Framework
-* WebSocket
-* PostgreSQL
-* JWT
-* Docker Compose
+---
 
-### Frontend
+## Arquitetura geral
 
-* Vite
-* TypeScript
-* React
-* WebSocket API do navegador
+```text
+Frontend Vite + TypeScript
+        |
+        | HTTP + JWT
+        v
+Backend Go + Gin
+        |
+        | SQL
+        v
+PostgreSQL
 
-### Banco de dados
+Backend Go + Gin
+        |
+        | WebSocket
+        v
+Frontend em tempo real
+```
 
-* PostgreSQL
+Fluxo principal:
 
-## Estrutura inicial do projeto
+```text
+1. Usuário faz login no frontend.
+2. Backend valida as credenciais.
+3. Backend retorna um token JWT.
+4. Frontend usa o token para consumir a API.
+5. Frontend abre conexão WebSocket com o backend.
+6. Usuário cria uma notificação.
+7. Backend salva a notificação no PostgreSQL.
+8. Backend envia evento WebSocket.
+9. Frontend atualiza a lista em tempo real.
+```
+
+---
+
+## Estrutura do projeto
 
 ```text
 real-time-notifications/
 ├── backend/
+│   ├── cmd/api/
+│   ├── internal/
+│   │   ├── config/
+│   │   ├── database/
+│   │   ├── handlers/
+│   │   ├── middlewares/
+│   │   ├── models/
+│   │   ├── repositories/
+│   │   ├── routes/
+│   │   ├── services/
+│   │   └── websocket/
+│   ├── migrations/
+│   ├── .env.example
+│   ├── go.mod
+│   └── go.sum
 ├── frontend/
+│   ├── src/
+│   │   ├── main.ts
+│   │   ├── style.css
+│   │   └── types.ts
+│   ├── index.html
+│   ├── package.json
+│   └── tsconfig.json
 ├── docs/
 │   ├── architecture.md
 │   └── learning-diary.md
+├── docker-compose.yml
 ├── README.md
 └── .gitignore
 ```
 
-## Arquitetura planejada do backend
+---
 
-```text
-backend/
-├── cmd/
-│   └── api/
-│       └── main.go
-├── internal/
-│   ├── config/
-│   ├── database/
-│   ├── models/
-│   ├── repositories/
-│   ├── services/
-│   ├── handlers/
-│   ├── routes/
-│   ├── middleware/
-│   ├── websocket/
-│   └── logger/
-├── migrations/
-├── go.mod
-├── go.sum
-└── .env.example
-```
+## Pré-requisitos
 
-## Arquitetura planejada do frontend
+Antes de rodar o projeto, é necessário ter instalado:
 
-```text
-frontend/
-├── src/
-│   ├── components/
-│   ├── hooks/
-│   ├── pages/
-│   ├── services/
-│   ├── types/
-│   ├── utils/
-│   ├── App.tsx
-│   └── main.tsx
-├── index.html
-├── package.json
-├── tsconfig.json
-├── vite.config.ts
-└── .env.example
-```
+- Go
+- Node.js
+- npm
+- Docker
+- Docker Compose
+- Git
 
-## Funcionalidades planejadas
+---
 
-* Login simples com JWT.
-* Listagem de notificações do usuário autenticado.
-* Criação de notificações via API HTTP.
-* Envio de notificações em tempo real via WebSocket.
-* Histórico de notificações.
-* Marcação de notificações como lidas.
-* Exibição instantânea no frontend.
-* Reconexão automática do WebSocket.
-* Logs no backend.
-* Tratamento de erros.
-* Documentação completa.
+## Variáveis de ambiente
 
-## Fluxo geral da aplicação
+O backend usa um arquivo `.env`.
 
-1. O usuário faz login no frontend.
-2. O backend valida as credenciais.
-3. O backend retorna um token JWT.
-4. O frontend usa o token para acessar endpoints protegidos.
-5. O frontend abre uma conexão WebSocket autenticada.
-6. O backend registra o usuário conectado no Hub WebSocket.
-7. Uma notificação é criada via API HTTP.
-8. O backend salva a notificação no PostgreSQL.
-9. O backend envia a notificação em tempo real se o usuário estiver online.
-10. O frontend recebe e exibe a notificação imediatamente.
-11. O usuário pode consultar o histórico.
-12. O usuário pode marcar notificações como lidas.
-
-## Como executar
-
-As instruções completas serão adicionadas conforme o desenvolvimento avançar.
-
-Ao final do projeto, será possível executar:
+Entre na pasta do backend:
 
 ```bash
-docker compose up
+cd backend
+cp .env.example .env
 ```
 
-E acessar o frontend no navegador.
+Exemplo de configuração:
 
-## Como testar
-
-Os testes manuais e automatizados serão documentados durante o desenvolvimento.
-
-Fluxos mínimos que serão testados:
-
-* login;
-* criação de notificação;
-* recebimento em tempo real;
-* listagem de histórico;
-* marcação como lida;
-* reconexão WebSocket.
-
-## Endpoints planejados
-
-| Método | Rota                      | Descrição                                 |
-| ------ | ------------------------- | ----------------------------------------- |
-| GET    | `/health`                 | Verifica se a API está funcionando        |
-| POST   | `/auth/login`             | Realiza login                             |
-| GET    | `/notifications`          | Lista notificações do usuário autenticado |
-| POST   | `/notifications`          | Cria uma nova notificação                 |
-| PATCH  | `/notifications/:id/read` | Marca uma notificação como lida           |
-| GET    | `/ws`                     | Abre conexão WebSocket autenticada        |
-
-## Decisões arquiteturais
-
-### Separação entre backend e frontend
-
-O backend será responsável por regras de negócio, autenticação, banco de dados e WebSocket.
-
-O frontend será responsável por interface, estado visual, chamadas HTTP e conexão WebSocket no navegador.
-
-### Uso de PostgreSQL
-
-O PostgreSQL será usado para persistir usuários e notificações, garantindo que o histórico continue existindo mesmo após reiniciar o sistema.
-
-### Uso de WebSocket
-
-O WebSocket será usado porque permite comunicação em tempo real entre servidor e cliente, sem que o frontend precise ficar perguntando repetidamente se existem novas notificações.
-
-### Uso de JWT
-
-O JWT será usado para autenticar requisições HTTP e também identificar o usuário durante a conexão WebSocket.
-
-## Status do projeto
-
-* [x] Planejamento inicial
-* [x] Arquitetura proposta
-* [ ] Backend com Gin
-* [ ] Banco PostgreSQL
-* [ ] Autenticação JWT
-* [ ] API de notificações
-* [ ] WebSocket backend
-* [ ] Frontend Vite + TypeScript
-* [ ] Integração em tempo real
-* [ ] README final
-* [ ] Revisão final
-
-### Autenticação com JWT
-
-Até esta etapa, foi implementada autenticação com JWT no backend.
-
-Endpoints criados:
-
-    POST /auth/login
-    GET /auth/me
-
-O endpoint `POST /auth/login` recebe email e senha, valida as credenciais com bcrypt e retorna um token JWT.
-
-O endpoint `GET /auth/me` é protegido por middleware e retorna os dados básicos do usuário autenticado.
-
-O token deve ser enviado no header:
-
-    Authorization: Bearer <token>
-
-Também foi adicionada a variável de ambiente:
-
-    JWT_SECRET=development-secret-change-me
-
-Em produção, esse valor deve ser trocado por uma chave segura.
-
-### API HTTP de notificações
-
-Até esta etapa, foram implementados endpoints HTTP protegidos por JWT para gerenciamento de notificações.
-
-Endpoints criados:
-
-```text
-GET /notifications
-POST /notifications
-PATCH /notifications/:id/read
-
-### WebSocket backend
-
-Até esta etapa, foi implementado o endpoint WebSocket autenticado:
-
-```text
-GET /ws?token=<jwt>
-
-### Integração entre notificações e WebSocket
-
-Nesta etapa, a criação de notificações via HTTP foi integrada ao WebSocket.
-
-Quando uma notificação é criada pelo endpoint:
-
-```text
-POST /notifications
-
-### Frontend com Vite + TypeScript
-
-Nesta etapa, foi criado o frontend do projeto usando Vite com TypeScript.
-
-O frontend está localizado em:
-
-```text
-frontend/
-### Integração frontend/backend
-
-Nesta etapa, o frontend em Vite + TypeScript foi integrado ao backend em Go.
-
-Funcionalidades integradas:
-
-```text
-POST /auth/login
-GET /notifications
-POST /notifications
-PATCH /notifications/:id/read
-GET /ws?token=<jwt>
+```env
+SERVER_PORT=8080
+DATABASE_URL=postgres://postgres:postgres@localhost:5432/notifications_db?sslmode=disable
+JWT_SECRET=change-me-in-production
 ```
 
-Fluxo implementado no frontend:
+---
 
-```text
-1. Usuário faz login pela interface.
-2. Frontend envia email e senha para POST /auth/login.
-3. Backend retorna token JWT.
-4. Frontend salva o token no localStorage.
-5. Frontend carrega notificações com GET /notifications.
-6. Frontend abre conexão WebSocket usando /ws?token=<jwt>.
-7. Usuário pode criar notificações pela interface.
-8. Notificações criadas aparecem na lista.
-9. Notificações podem ser marcadas como lidas.
-10. O status do WebSocket é exibido no dashboard.
-```
+## Como rodar o projeto
 
-A interface possui:
+### 1. Subir o PostgreSQL
 
-```text
-- tela de login;
-- dashboard autenticado;
-- status da conexão WebSocket;
-- contador de notificações totais;
-- contador de notificações não lidas;
-- formulário de criação de notificação;
-- lista de notificações;
-- botão para marcar notificação como lida.
-```
-
-Para rodar a aplicação completa:
+Na raiz do projeto:
 
 ```bash
-# Terminal 1
+docker compose up -d
+```
+
+Se seu ambiente exigir permissão de administrador para Docker, use:
+
+```bash
 sudo docker compose up -d
+```
 
-# Terminal 2
+---
+
+### 2. Executar a migration
+
+Na raiz do projeto:
+
+```bash
+docker exec -i realtime_notifications_postgres \
+  psql -U postgres -d notifications_db \
+  < backend/migrations/001_create_initial_schema.sql
+```
+
+Se estiver usando Docker com `sudo`:
+
+```bash
+sudo docker exec -i realtime_notifications_postgres \
+  psql -U postgres -d notifications_db \
+  < backend/migrations/001_create_initial_schema.sql
+```
+
+A migration cria as tabelas necessárias e usuários de teste.
+
+---
+
+### 3. Rodar o backend
+
+Em um terminal:
+
+```bash
 cd backend
 go run ./cmd/api
+```
 
-# Terminal 3
+O backend ficará disponível em:
+
+```text
+http://localhost:8080
+```
+
+Endpoint de verificação:
+
+```text
+GET http://localhost:8080/health
+```
+
+---
+
+### 4. Rodar o frontend
+
+Em outro terminal:
+
+```bash
 cd frontend
+npm install
 npm run dev
 ```
 
-Acesse:
+O frontend ficará disponível em:
 
 ```text
-http://localhost:5173/
+http://localhost:5173
 ```
 
-Usuário de teste:
+---
+
+## Usuário de teste
+
+Use as credenciais abaixo para acessar a aplicação:
 
 ```text
-email: daniel@example.com
-senha: password
+E-mail: daniel@example.com
+Senha: password
 ```
 
+---
+
+## Endpoints principais
+
+### Health check
+
+```text
+GET /health
+```
+
+Verifica se a API está rodando e se o banco está conectado.
+
+---
+
+### Login
+
+```text
+POST /auth/login
+```
+
+Body:
+
+```json
+{
+  "email": "daniel@example.com",
+  "password": "password"
+}
+```
+
+Resposta esperada:
+
+```json
+{
+  "token": "jwt-token"
+}
+```
+
+---
+
+### Usuário autenticado
+
+```text
+GET /auth/me
+```
+
+Header:
+
+```text
+Authorization: Bearer <token>
+```
+
+---
+
+### Listar notificações
+
+```text
+GET /notifications
+```
+
+Header:
+
+```text
+Authorization: Bearer <token>
+```
+
+---
+
+### Criar notificação
+
+```text
+POST /notifications
+```
+
+Header:
+
+```text
+Authorization: Bearer <token>
+```
+
+Body:
+
+```json
+{
+  "title": "Nova notificação",
+  "message": "Mensagem da notificação"
+}
+```
+
+---
+
+### Marcar notificação como lida
+
+```text
+PATCH /notifications/:id/read
+```
+
+Header:
+
+```text
+Authorization: Bearer <token>
+```
+
+---
+
+### WebSocket
+
+```text
+GET /ws?token=<jwt>
+```
+
+Evento recebido ao conectar:
+
+```json
+{
+  "type": "connected",
+  "user_id": "...",
+  "message": "WebSocket connected"
+}
+```
+
+Evento recebido quando uma notificação é criada:
+
+```json
+{
+  "type": "notification.created",
+  "data": {
+    "id": "...",
+    "user_id": "...",
+    "title": "...",
+    "message": "...",
+    "is_read": false,
+    "created_at": "..."
+  }
+}
+```
+
+---
+
+## Testes manuais recomendados
+
+Após subir PostgreSQL, backend e frontend:
+
+1. Acesse `http://localhost:5173`.
+2. Faça login com o usuário de teste.
+3. Verifique se o dashboard exibe `WebSocket conectado`.
+4. Crie uma nova notificação.
+5. Verifique se ela aparece na lista.
+6. Marque a notificação como lida.
+7. Verifique se os contadores de total e não lidas são atualizados.
+8. Atualize a página e confirme que as notificações continuam salvas.
+
+---
+
+## Validação técnica
+
+### Backend
+
+```bash
+cd backend
+go test ./...
+```
+
+### Frontend
+
+```bash
+cd frontend
+npm run build
+```
+
+---
+
+## Documentação complementar
+
+A documentação do desenvolvimento está disponível em:
+
+```text
+docs/architecture.md
+docs/learning-diary.md
+```
+
+O arquivo `learning-diary.md` registra as etapas de aprendizado, decisões técnicas e explicações dos principais conceitos utilizados.
+
+---
+
+## Tecnologias utilizadas
+
+- Go
+- Gin
+- PostgreSQL
+- pgx
+- JWT
+- WebSocket
+- Docker Compose
+- Vite
+- TypeScript
+- HTML
+- CSS
+
+---
+
+## Status do projeto
+
+Projeto funcional e integrado.
+
+Inclui backend, banco de dados, autenticação, WebSocket e frontend consumindo a API em tempo real.
