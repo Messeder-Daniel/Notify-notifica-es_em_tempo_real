@@ -496,3 +496,25 @@ NotificationRepository salva no PostgreSQL
 NotificationHandler envia evento para o Hub
 Hub envia mensagem para clientes conectados daquele usuário
 Cliente WebSocket recebe notification.created
+
+
+## Etapa 13 — Frontend com Vite + TypeScript
+
+Nesta etapa, criei a base do frontend usando Vite com TypeScript.
+
+Aprendi que o Vite é uma ferramenta usada para criar e rodar aplicações frontend modernas com ambiente de desenvolvimento rápido.
+
+Também aprendi que o TypeScript ajuda a evitar erros porque permite definir tipos para os dados usados na aplicação.
+
+### O que foi criado
+
+```text
+frontend/
+├── index.html
+├── package.json
+├── tsconfig.json
+├── vite.config.ts
+└── src/
+    ├── main.ts
+    ├── style.css
+    └── types.ts

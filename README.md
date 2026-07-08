@@ -245,3 +245,12 @@ Quando uma notificação é criada pelo endpoint:
 
 ```text
 POST /notifications
+
+### Frontend com Vite + TypeScript
+
+Nesta etapa, foi criado o frontend do projeto usando Vite com TypeScript.
+
+O frontend está localizado em:
+
+```text
+frontend/
