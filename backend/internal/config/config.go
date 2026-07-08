@@ -10,6 +10,7 @@ import (
 type Config struct {
 	ServerPort  string
 	DatabaseURL string
+	JWTSecret   string
 }
 
 func LoadConfig() Config {
@@ -20,6 +21,7 @@ func LoadConfig() Config {
 	return Config{
 		ServerPort:  getEnv("SERVER_PORT", "8080"),
 		DatabaseURL: getEnv("DATABASE_URL", "postgres://postgres:postgres@localhost:5432/notifications_db?sslmode=disable"),
+		JWTSecret:   getEnv("JWT_SECRET", "development-secret-change-me"),
 	}
 }
 

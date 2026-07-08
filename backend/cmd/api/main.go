@@ -25,7 +25,7 @@ func main() {
 		log.Fatalf("Failed to set trusted proxies: %v", err)
 	}
 
-	routes.RegisterRoutes(router, dbPool)
+	routes.RegisterRoutes(router, dbPool, cfg.JWTSecret)
 
 	log.Printf("Starting server on port %s", cfg.ServerPort)
 

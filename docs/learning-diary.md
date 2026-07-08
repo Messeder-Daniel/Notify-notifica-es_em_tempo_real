@@ -393,3 +393,33 @@ A aplicação passa a seguir este fluxo:
 
 ```text
 handlers -> services -> repositories -> database
+
+## Etapa 9 — Autenticação com JWT
+
+Nesta etapa, implementei autenticação com JWT no backend.
+
+Aprendi que o login recebe email e senha, valida a senha com bcrypt e gera um token assinado.
+
+Também aprendi que rotas protegidas usam o header `Authorization` com o formato:
+
+```text
+Bearer <token>
+Principais arquivos criados ou alterados:
+
+```text
+backend/internal/handlers/auth_handler.go
+backend/internal/middlewares/auth_middleware.go
+backend/internal/services/auth_service.go
+backend/internal/routes/routes.go
+backend/internal/config/config.go
+backend/cmd/api/main.go
+```
+
+Testes manuais realizados:
+
+```text
+POST /auth/login
+GET /auth/me
+```
+
+O endpoint `/auth/me` confirmou que o token JWT estava válido e que o middleware conseguiu extrair o ID e o email do usuário autenticado.
