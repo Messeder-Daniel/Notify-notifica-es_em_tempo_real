@@ -229,3 +229,10 @@ Endpoints criados:
 GET /notifications
 POST /notifications
 PATCH /notifications/:id/read
+
+### WebSocket backend
+
+Até esta etapa, foi implementado o endpoint WebSocket autenticado:
+
+```text
+GET /ws?token=<jwt>

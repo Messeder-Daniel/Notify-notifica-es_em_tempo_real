@@ -8,6 +8,7 @@ import (
 	"github.com/messederdaniel/real-time-notifications/backend/internal/config"
 	"github.com/messederdaniel/real-time-notifications/backend/internal/database"
 	"github.com/messederdaniel/real-time-notifications/backend/internal/routes"
+	internalwebsocket "github.com/messederdaniel/real-time-notifications/backend/internal/websocket"
 )
 
 func main() {
@@ -19,13 +20,16 @@ func main() {
 	}
 	defer dbPool.Close()
 
+	hub := internalwebsocket.NewHub()
+	go hub.Run()
+
 	router := gin.Default()
 
 	if err := router.SetTrustedProxies(nil); err != nil {
 		log.Fatalf("Failed to set trusted proxies: %v", err)
 	}
 
-	routes.RegisterRoutes(router, dbPool, cfg.JWTSecret)
+	routes.RegisterRoutes(router, dbPool, cfg.JWTSecret, hub)
 
 	log.Printf("Starting server on port %s", cfg.ServerPort)
 

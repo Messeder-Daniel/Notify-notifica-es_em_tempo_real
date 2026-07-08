@@ -438,3 +438,41 @@ Endpoints implementados:
 GET /notifications
 POST /notifications
 PATCH /notifications/:id/read
+
+## Etapa 11 — WebSocket backend
+
+Nesta etapa, implementei o backend WebSocket autenticado.
+
+Aprendi que WebSocket é diferente de HTTP tradicional porque mantém uma conexão aberta entre cliente e servidor.
+
+Também aprendi que, para notificações em tempo real, o servidor precisa manter controle dos clientes conectados.
+
+### Conceitos novos
+
+#### WebSocket
+
+WebSocket é uma tecnologia que permite comunicação contínua entre cliente e servidor.
+
+Diferente do HTTP, a conexão não termina após uma resposta.
+
+#### Upgrade HTTP
+
+O WebSocket começa como uma requisição HTTP comum e depois faz upgrade para uma conexão persistente.
+
+#### Hub
+
+O Hub é o componente responsável por gerenciar clientes conectados.
+
+Ele registra clientes, remove clientes desconectados e envia mensagens para usuários específicos.
+
+#### Client
+
+O Client representa uma conexão WebSocket individual.
+
+Cada Client possui:
+
+```text
+userID
+userEmail
+conn
+send channel
