@@ -518,3 +518,87 @@ frontend/
     ├── main.ts
     ├── style.css
     └── types.ts
+## Etapa 14 — Integração frontend/backend
+
+Nesta etapa, integrei o frontend em Vite + TypeScript com o backend em Go.
+
+O frontend agora consegue autenticar o usuário, listar notificações, criar notificações, marcar notificações como lidas e manter uma conexão WebSocket aberta com o backend.
+
+### Funcionalidades implementadas
+
+```text
+- tela de login;
+- autenticação usando POST /auth/login;
+- armazenamento do token JWT no localStorage;
+- dashboard autenticado;
+- listagem de notificações usando GET /notifications;
+- criação de notificações usando POST /notifications;
+- marcação de notificações como lidas usando PATCH /notifications/:id/read;
+- conexão WebSocket usando /ws?token=<jwt>;
+- exibição do status da conexão WebSocket;
+- atualização visual das notificações.
+```
+
+### Conceitos praticados
+
+- integração entre frontend e backend;
+- consumo de API HTTP com fetch;
+- envio de token JWT no header Authorization;
+- armazenamento de sessão no localStorage;
+- conexão WebSocket no navegador;
+- manipulação de estado no frontend com TypeScript;
+- renderização dinâmica da interface;
+- tratamento de erros e mensagens de sucesso;
+- CORS no backend para permitir comunicação entre localhost:5173 e localhost:8080.
+
+### Fluxo da aplicação
+
+```text
+Usuário faz login
+Frontend recebe token JWT
+Frontend carrega notificações
+Frontend conecta no WebSocket
+Usuário cria notificação
+Backend salva no PostgreSQL
+Backend envia evento pelo WebSocket
+Frontend atualiza a interface
+```
+
+### Testes realizados
+
+Rodei o PostgreSQL, o backend e o frontend ao mesmo tempo.
+
+Depois testei:
+
+```text
+1. Login pela tela.
+2. Carregamento das notificações existentes.
+3. Status WebSocket conectado.
+4. Criação de uma nova notificação.
+5. Exibição da notificação na lista.
+6. Marcação de notificação como lida.
+7. Atualização dos contadores de total e não lidas.
+```
+
+### Perguntas que um professor poderia fazer
+
+#### 1. Por que foi necessário configurar CORS?
+
+Porque o frontend roda em `localhost:5173` e o backend em `localhost:8080`. O navegador bloqueia chamadas entre origens diferentes se o backend não permitir.
+
+#### 2. Onde o token JWT fica armazenado no frontend?
+
+No `localStorage`, para que a sessão continue ativa mesmo após recarregar a página.
+
+#### 3. Como o frontend envia o token para o backend?
+
+Nas requisições HTTP, usando o header `Authorization: Bearer <token>`.
+
+#### 4. Como o frontend conecta no WebSocket?
+
+Usando a URL `/ws?token=<jwt>`.
+
+#### 5. O que comprova que a integração funcionou?
+
+A interface conseguiu fazer login, listar notificações, criar notificações, marcar como lidas e mostrar o WebSocket conectado.
+

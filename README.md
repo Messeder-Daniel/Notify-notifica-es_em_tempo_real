@@ -254,3 +254,73 @@ O frontend está localizado em:
 
 ```text
 frontend/
+### Integração frontend/backend
+
+Nesta etapa, o frontend em Vite + TypeScript foi integrado ao backend em Go.
+
+Funcionalidades integradas:
+
+```text
+POST /auth/login
+GET /notifications
+POST /notifications
+PATCH /notifications/:id/read
+GET /ws?token=<jwt>
+```
+
+Fluxo implementado no frontend:
+
+```text
+1. Usuário faz login pela interface.
+2. Frontend envia email e senha para POST /auth/login.
+3. Backend retorna token JWT.
+4. Frontend salva o token no localStorage.
+5. Frontend carrega notificações com GET /notifications.
+6. Frontend abre conexão WebSocket usando /ws?token=<jwt>.
+7. Usuário pode criar notificações pela interface.
+8. Notificações criadas aparecem na lista.
+9. Notificações podem ser marcadas como lidas.
+10. O status do WebSocket é exibido no dashboard.
+```
+
+A interface possui:
+
+```text
+- tela de login;
+- dashboard autenticado;
+- status da conexão WebSocket;
+- contador de notificações totais;
+- contador de notificações não lidas;
+- formulário de criação de notificação;
+- lista de notificações;
+- botão para marcar notificação como lida.
+```
+
+Para rodar a aplicação completa:
+
+```bash
+# Terminal 1
+sudo docker compose up -d
+
+# Terminal 2
+cd backend
+go run ./cmd/api
+
+# Terminal 3
+cd frontend
+npm run dev
+```
+
+Acesse:
+
+```text
+http://localhost:5173/
+```
+
+Usuário de teste:
+
+```text
+email: daniel@example.com
+senha: password
+```
+

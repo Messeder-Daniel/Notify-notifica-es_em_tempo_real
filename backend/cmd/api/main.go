@@ -3,7 +3,9 @@ package main
 import (
 	"context"
 	"log"
+	"time"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/messederdaniel/real-time-notifications/backend/internal/config"
 	"github.com/messederdaniel/real-time-notifications/backend/internal/database"
@@ -24,6 +26,28 @@ func main() {
 	go hub.Run()
 
 	router := gin.Default()
+
+	router.Use(cors.New(cors.Config{
+		AllowOrigins: []string{
+			"http://localhost:5173",
+		},
+		AllowMethods: []string{
+			"GET",
+			"POST",
+			"PATCH",
+			"OPTIONS",
+		},
+		AllowHeaders: []string{
+			"Origin",
+			"Content-Type",
+			"Authorization",
+		},
+		ExposeHeaders: []string{
+			"Content-Length",
+		},
+		AllowCredentials: true,
+		MaxAge:           12 * time.Hour,
+	}))
 
 	if err := router.SetTrustedProxies(nil); err != nil {
 		log.Fatalf("Failed to set trusted proxies: %v", err)
