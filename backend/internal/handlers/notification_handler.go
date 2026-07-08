@@ -1,21 +1,26 @@
 package handlers
 
 import (
+	"encoding/json"
 	"errors"
+	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/messederdaniel/real-time-notifications/backend/internal/models"
 	"github.com/messederdaniel/real-time-notifications/backend/internal/services"
+	internalwebsocket "github.com/messederdaniel/real-time-notifications/backend/internal/websocket"
 )
 
 type NotificationHandler struct {
 	notificationService *services.NotificationService
+	hub                 *internalwebsocket.Hub
 }
 
-func NewNotificationHandler(notificationService *services.NotificationService) *NotificationHandler {
+func NewNotificationHandler(notificationService *services.NotificationService, hub *internalwebsocket.Hub) *NotificationHandler {
 	return &NotificationHandler{
 		notificationService: notificationService,
+		hub:                 hub,
 	}
 }
 
@@ -50,6 +55,8 @@ func (handler *NotificationHandler) Create(ctx *gin.Context) {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create notification"})
 		return
 	}
+
+	handler.sendNotificationCreatedEvent(userID, notification)
 
 	ctx.JSON(http.StatusCreated, notification)
 }
@@ -91,6 +98,21 @@ func (handler *NotificationHandler) MarkAsRead(ctx *gin.Context) {
 	}
 
 	ctx.JSON(http.StatusOK, notification)
+}
+
+func (handler *NotificationHandler) sendNotificationCreatedEvent(userID string, notification *models.Notification) {
+	event := map[string]any{
+		"type": "notification.created",
+		"data": notification,
+	}
+
+	eventData, err := json.Marshal(event)
+	if err != nil {
+		log.Printf("failed to marshal notification websocket event: %v", err)
+		return
+	}
+
+	handler.hub.SendToUser(userID, eventData)
 }
 
 func getAuthenticatedUserID(ctx *gin.Context) (string, bool) {

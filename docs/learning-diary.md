@@ -476,3 +476,23 @@ userID
 userEmail
 conn
 send channel
+
+## Etapa 12 — Integração entre notificações e WebSocket
+
+Nesta etapa, integrei a criação de notificações HTTP com o envio em tempo real via WebSocket.
+
+Antes desta etapa, o backend já conseguia criar notificações no PostgreSQL e também já conseguia manter conexões WebSocket autenticadas.
+
+Agora, quando uma notificação é criada pelo endpoint `POST /notifications`, o backend também envia automaticamente um evento WebSocket para o usuário conectado.
+
+### Fluxo implementado
+
+```text
+POST /notifications
+JWT identifica o usuário
+NotificationHandler cria a notificação
+NotificationService aplica regras de negócio
+NotificationRepository salva no PostgreSQL
+NotificationHandler envia evento para o Hub
+Hub envia mensagem para clientes conectados daquele usuário
+Cliente WebSocket recebe notification.created

@@ -20,7 +20,7 @@ func RegisterRoutes(router *gin.Engine, db *pgxpool.Pool, jwtSecret string, hub 
 	notificationService := services.NewNotificationService(notificationRepository)
 
 	authHandler := handlers.NewAuthHandler(authService)
-	notificationHandler := handlers.NewNotificationHandler(notificationService)
+	notificationHandler := handlers.NewNotificationHandler(notificationService, hub)
 	webSocketHandler := handlers.NewWebSocketHandler(hub, jwtSecret)
 
 	router.GET("/health", healthHandler.Check)

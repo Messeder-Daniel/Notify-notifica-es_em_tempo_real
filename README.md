@@ -236,3 +236,12 @@ Até esta etapa, foi implementado o endpoint WebSocket autenticado:
 
 ```text
 GET /ws?token=<jwt>
+
+### Integração entre notificações e WebSocket
+
+Nesta etapa, a criação de notificações via HTTP foi integrada ao WebSocket.
+
+Quando uma notificação é criada pelo endpoint:
+
+```text
+POST /notifications
