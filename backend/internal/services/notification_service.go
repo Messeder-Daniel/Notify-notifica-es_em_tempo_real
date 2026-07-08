@@ -24,11 +24,11 @@ func (service *NotificationService) Create(ctx context.Context, request models.C
 	request.Message = strings.TrimSpace(request.Message)
 
 	if request.Title == "" {
-		return nil, fmt.Errorf("notification title is required")
+		return nil, ErrNotificationTitleRequired
 	}
 
 	if request.Message == "" {
-		return nil, fmt.Errorf("notification message is required")
+		return nil, ErrNotificationMessageRequired
 	}
 
 	notification, err := service.notificationRepository.Create(ctx, request)

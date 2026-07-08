@@ -218,3 +218,14 @@ Também foi adicionada a variável de ambiente:
     JWT_SECRET=development-secret-change-me
 
 Em produção, esse valor deve ser trocado por uma chave segura.
+
+### API HTTP de notificações
+
+Até esta etapa, foram implementados endpoints HTTP protegidos por JWT para gerenciamento de notificações.
+
+Endpoints criados:
+
+```text
+GET /notifications
+POST /notifications
+PATCH /notifications/:id/read

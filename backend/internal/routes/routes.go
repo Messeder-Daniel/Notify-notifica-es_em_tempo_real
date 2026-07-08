@@ -13,13 +13,22 @@ func RegisterRoutes(router *gin.Engine, db *pgxpool.Pool, jwtSecret string) {
 	healthHandler := handlers.NewHealthHandler(db)
 
 	userRepository := repositories.NewUserRepository(db)
+	notificationRepository := repositories.NewNotificationRepository(db)
+
 	authService := services.NewAuthService(userRepository, jwtSecret)
+	notificationService := services.NewNotificationService(notificationRepository)
+
 	authHandler := handlers.NewAuthHandler(authService)
+	notificationHandler := handlers.NewNotificationHandler(notificationService)
 
 	router.GET("/health", healthHandler.Check)
 	router.POST("/auth/login", authHandler.Login)
 
 	protected := router.Group("/")
 	protected.Use(middlewares.AuthMiddleware(jwtSecret))
+
 	protected.GET("/auth/me", authHandler.Me)
+	protected.GET("/notifications", notificationHandler.FindByUserID)
+	protected.POST("/notifications", notificationHandler.Create)
+	protected.PATCH("/notifications/:id/read", notificationHandler.MarkAsRead)
 }

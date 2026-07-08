@@ -423,3 +423,18 @@ GET /auth/me
 ```
 
 O endpoint `/auth/me` confirmou que o token JWT estava válido e que o middleware conseguiu extrair o ID e o email do usuário autenticado.
+
+## Etapa 10 — API HTTP de notificações
+
+Nesta etapa, implementei a API HTTP de notificações protegida por JWT.
+
+Aprendi a criar endpoints autenticados usando o usuário extraído do token JWT pelo middleware.
+
+Também aprendi a conectar o fluxo completo entre handler, service, repository e PostgreSQL.
+
+Endpoints implementados:
+
+```text
+GET /notifications
+POST /notifications
+PATCH /notifications/:id/read
