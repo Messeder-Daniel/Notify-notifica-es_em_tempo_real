@@ -1,10 +1,11 @@
 import './style.css'
-import type { LoginResponse, Notification, User, WebSocketEvent } from './types'
+import type { LoginResponse, Notification, PasswordResponse, User, WebSocketEvent } from './types'
 
 const API_URL = 'http://localhost:8080'
 const WS_URL = 'ws://localhost:8080'
 
 type ConnectionStatus = 'disconnected' | 'connecting' | 'connected'
+type AuthMode = 'login' | 'register'
 
 type AppState = {
   token: string | null
@@ -15,6 +16,7 @@ type AppState = {
   successMessage: string | null
   isLoading: boolean
   socket: WebSocket | null
+  authMode: AuthMode
 }
 
 const state: AppState = {
@@ -26,6 +28,7 @@ const state: AppState = {
   successMessage: null,
   isLoading: false,
   socket: null,
+  authMode: 'login',
 }
 
 function loadUserFromStorage(): User | null {
@@ -48,6 +51,11 @@ function saveSession(token: string, user: User): void {
   state.user = user
 
   localStorage.setItem('token', token)
+  localStorage.setItem('user', JSON.stringify(user))
+}
+
+function saveUser(user: User): void {
+  state.user = user
   localStorage.setItem('user', JSON.stringify(user))
 }
 
@@ -111,60 +119,119 @@ function render(): void {
     return
   }
 
-  app.innerHTML = state.token ? renderDashboard() : renderLogin()
+  app.innerHTML = state.token ? renderDashboard() : renderAuthPage()
 
   if (state.token) {
     bindDashboardEvents()
   } else {
-    bindLoginEvents()
+    bindAuthEvents()
   }
 }
 
-function renderLogin(): string {
+function renderAuthPage(): string {
+  const isRegister = state.authMode === 'register'
+
   return `
     <main class="auth-page">
       <section class="auth-card">
         <p class="eyebrow">Sistema de notificações em tempo real</p>
-        <h1>Entrar</h1>
+        <h1>${isRegister ? 'Criar conta' : 'Entrar'}</h1>
         <p class="description">
-          Faça login para acessar o painel de notificações e receber eventos em tempo real via WebSocket.
+          ${isRegister
+            ? 'Crie um usuário real para testar o sistema com dados salvos no PostgreSQL.'
+            : 'Faça login para acessar o painel de notificações e receber eventos em tempo real via WebSocket.'}
         </p>
+
+        <div class="auth-tabs">
+          <button class="${!isRegister ? 'active' : ''}" type="button" data-auth-mode="login">Entrar</button>
+          <button class="${isRegister ? 'active' : ''}" type="button" data-auth-mode="register">Criar conta</button>
+        </div>
 
         ${renderFeedback()}
 
-        <form id="login-form" class="form">
-          <label>
-            E-mail
-            <input
-              type="email"
-              name="email"
-              value="daniel@example.com"
-              autocomplete="email"
-              required
-            />
-          </label>
-
-          <label>
-            Senha
-            <input
-              type="password"
-              name="password"
-              value="password"
-              autocomplete="current-password"
-              required
-            />
-          </label>
-
-          <button type="submit" ${state.isLoading ? 'disabled' : ''}>
-            ${state.isLoading ? 'Entrando...' : 'Entrar no sistema'}
-          </button>
-        </form>
+        ${isRegister ? renderRegisterForm() : renderLoginForm()}
 
         <p class="hint">
           Usuário de teste: <strong>daniel@example.com</strong> / <strong>password</strong>
         </p>
       </section>
     </main>
+  `
+}
+
+function renderLoginForm(): string {
+  return `
+    <form id="login-form" class="form">
+      <label>
+        E-mail
+        <input
+          type="email"
+          name="email"
+          value="daniel@example.com"
+          autocomplete="email"
+          required
+        />
+      </label>
+
+      <label>
+        Senha
+        <input
+          type="password"
+          name="password"
+          value="password"
+          autocomplete="current-password"
+          required
+        />
+      </label>
+
+      <button type="submit" ${state.isLoading ? 'disabled' : ''}>
+        ${state.isLoading ? 'Entrando...' : 'Entrar no sistema'}
+      </button>
+    </form>
+  `
+}
+
+function renderRegisterForm(): string {
+  return `
+    <form id="register-form" class="form">
+      <label>
+        Nome
+        <input
+          type="text"
+          name="name"
+          placeholder="Seu nome"
+          autocomplete="name"
+          required
+        />
+      </label>
+
+      <label>
+        E-mail
+        <input
+          type="email"
+          name="email"
+          placeholder="voce@example.com"
+          autocomplete="email"
+          required
+        />
+      </label>
+
+      <label>
+        Senha
+        <input
+          type="password"
+          name="password"
+          placeholder="Mínimo de 6 caracteres"
+          autocomplete="new-password"
+          required
+          minlength="6"
+        />
+      </label>
+
+      <button type="submit" ${state.isLoading ? 'disabled' : ''}>
+        ${state.isLoading ? 'Criando...' : 'Criar conta'}
+      </button>
+    </form>
   `
 }
 
@@ -184,7 +251,8 @@ function renderDashboard(): string {
         </div>
 
         <div class="user-box">
-          <span>${escapeHtml(state.user?.email ?? 'Usuário autenticado')}</span>
+          <span>${escapeHtml(state.user?.name ?? 'Usuário')}</span>
+          <span>${escapeHtml(state.user?.email ?? '')}</span>
           <button id="logout-button" class="secondary-button" type="button">Sair</button>
         </div>
       </header>
@@ -242,6 +310,68 @@ function renderDashboard(): string {
 
             <button type="submit" ${state.isLoading ? 'disabled' : ''}>
               ${state.isLoading ? 'Enviando...' : 'Criar notificação'}
+            </button>
+          </form>
+        </article>
+
+        <article class="panel">
+          <h2>Minha conta</h2>
+          <p>
+            Atualize seus dados de acesso. As informações são persistidas no PostgreSQL.
+          </p>
+
+          <form id="profile-form" class="form">
+            <label>
+              Nome
+              <input
+                type="text"
+                name="name"
+                value="${escapeHtml(state.user?.name ?? '')}"
+                required
+              />
+            </label>
+
+            <label>
+              E-mail
+              <input
+                type="email"
+                name="email"
+                value="${escapeHtml(state.user?.email ?? '')}"
+                required
+              />
+            </label>
+
+            <button type="submit" ${state.isLoading ? 'disabled' : ''}>
+              Salvar dados
+            </button>
+          </form>
+
+          <div class="section-divider"></div>
+
+          <form id="password-form" class="form">
+            <label>
+              Senha atual
+              <input
+                type="password"
+                name="current_password"
+                autocomplete="current-password"
+                required
+              />
+            </label>
+
+            <label>
+              Nova senha
+              <input
+                type="password"
+                name="new_password"
+                autocomplete="new-password"
+                minlength="6"
+                required
+              />
+            </label>
+
+            <button type="submit" ${state.isLoading ? 'disabled' : ''}>
+              Alterar senha
             </button>
           </form>
         </article>
@@ -324,52 +454,82 @@ function renderNotification(notification: Notification): string {
   `
 }
 
-function bindLoginEvents(): void {
-  const form = document.querySelector<HTMLFormElement>('#login-form')
+function bindAuthEvents(): void {
+  const modeButtons = document.querySelectorAll<HTMLButtonElement>('[data-auth-mode]')
+  const loginForm = document.querySelector<HTMLFormElement>('#login-form')
+  const registerForm = document.querySelector<HTMLFormElement>('#register-form')
 
-  form?.addEventListener('submit', async (event) => {
+  modeButtons.forEach((button) => {
+    button.addEventListener('click', () => {
+      const mode = button.dataset.authMode
+
+      if (mode === 'login' || mode === 'register') {
+        state.authMode = mode
+        state.errorMessage = null
+        state.successMessage = null
+        render()
+      }
+    })
+  })
+
+  loginForm?.addEventListener('submit', async (event) => {
     event.preventDefault()
 
-    const formData = new FormData(form)
+    const formData = new FormData(loginForm)
     const email = String(formData.get('email') ?? '').trim()
-    const password = String(formData.get('password') ?? '').trim()
+    const password = String(formData.get('password') ?? '')
 
-    state.isLoading = true
-    state.errorMessage = null
-    state.successMessage = null
-    render()
-
-    try {
-      const response = await apiRequest<LoginResponse>('/auth/login', {
-        method: 'POST',
-        body: JSON.stringify({ email, password }),
-      })
-
-      const user: User = response.user ?? {
-        id: '',
-        name: 'Usuário',
-        email,
-      }
-
-      saveSession(response.token, user)
-
-      await loadNotifications()
-      connectWebSocket()
-
-      state.successMessage = 'Login realizado com sucesso.'
-    } catch (error) {
-      state.errorMessage = getErrorMessage(error)
-    } finally {
-      state.isLoading = false
-      render()
-    }
+    await authenticate('/auth/login', { email, password }, 'Login realizado com sucesso.')
   })
+
+  registerForm?.addEventListener('submit', async (event) => {
+    event.preventDefault()
+
+    const formData = new FormData(registerForm)
+    const name = String(formData.get('name') ?? '').trim()
+    const email = String(formData.get('email') ?? '').trim()
+    const password = String(formData.get('password') ?? '')
+
+    await authenticate('/auth/register', { name, email, password }, 'Conta criada com sucesso.')
+  })
+}
+
+async function authenticate(
+  path: '/auth/login' | '/auth/register',
+  payload: Record<string, string>,
+  successMessage: string,
+): Promise<void> {
+  state.isLoading = true
+  state.errorMessage = null
+  state.successMessage = null
+  render()
+
+  try {
+    const response = await apiRequest<LoginResponse>(path, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    })
+
+    saveSession(response.token, response.user)
+
+    await loadNotifications()
+    connectWebSocket()
+
+    state.successMessage = successMessage
+  } catch (error) {
+    state.errorMessage = getErrorMessage(error)
+  } finally {
+    state.isLoading = false
+    render()
+  }
 }
 
 function bindDashboardEvents(): void {
   const logoutButton = document.querySelector<HTMLButtonElement>('#logout-button')
   const refreshButton = document.querySelector<HTMLButtonElement>('#refresh-button')
   const notificationForm = document.querySelector<HTMLFormElement>('#notification-form')
+  const profileForm = document.querySelector<HTMLFormElement>('#profile-form')
+  const passwordForm = document.querySelector<HTMLFormElement>('#password-form')
   const markAsReadButtons = document.querySelectorAll<HTMLButtonElement>('[data-action="mark-as-read"]')
 
   logoutButton?.addEventListener('click', () => {
@@ -402,6 +562,45 @@ function bindDashboardEvents(): void {
       upsertNotification(notification)
       notificationForm.reset()
       state.successMessage = 'Notificação criada com sucesso.'
+    })
+  })
+
+  profileForm?.addEventListener('submit', async (event) => {
+    event.preventDefault()
+
+    const formData = new FormData(profileForm)
+    const name = String(formData.get('name') ?? '').trim()
+    const email = String(formData.get('email') ?? '').trim()
+
+    await runWithFeedback(async () => {
+      const user = await apiRequest<User>('/auth/me', {
+        method: 'PATCH',
+        body: JSON.stringify({ name, email }),
+      })
+
+      saveUser(user)
+      state.successMessage = 'Dados da conta atualizados.'
+    })
+  })
+
+  passwordForm?.addEventListener('submit', async (event) => {
+    event.preventDefault()
+
+    const formData = new FormData(passwordForm)
+    const currentPassword = String(formData.get('current_password') ?? '')
+    const newPassword = String(formData.get('new_password') ?? '')
+
+    await runWithFeedback(async () => {
+      await apiRequest<PasswordResponse>('/auth/password', {
+        method: 'PATCH',
+        body: JSON.stringify({
+          current_password: currentPassword,
+          new_password: newPassword,
+        }),
+      })
+
+      passwordForm.reset()
+      state.successMessage = 'Senha alterada com sucesso.'
     })
   })
 
@@ -555,6 +754,8 @@ async function initialize(): Promise<void> {
   render()
 
   try {
+    const user = await apiRequest<User>('/auth/me')
+    saveUser(user)
     await loadNotifications()
     connectWebSocket()
   } catch (error) {

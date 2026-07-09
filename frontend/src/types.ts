@@ -2,11 +2,12 @@ export type User = {
   id: string
   name: string
   email: string
+  created_at?: string
 }
 
 export type LoginResponse = {
   token: string
-  user?: User
+  user: User
 }
 
 export type Notification = {
@@ -17,6 +18,10 @@ export type Notification = {
   is_read: boolean
   created_at: string
   read_at?: string | null
+}
+
+export type PasswordResponse = {
+  message: string
 }
 
 export type WebSocketEvent =

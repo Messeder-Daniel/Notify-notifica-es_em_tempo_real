@@ -721,3 +721,46 @@ textarea:focus {
 
 }
 
+
+.auth-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin: 22px 0 4px;
+  padding: 6px;
+  border: 1px solid #1f2937;
+  border-radius: 16px;
+  background: #020617;
+}
+
+.auth-tabs button {
+  border-radius: 12px;
+  padding: 11px 12px;
+  color: #94a3b8;
+  background: transparent;
+}
+
+.auth-tabs button.active {
+  color: #ffffff;
+  background: #2563eb;
+}
+
+.section-divider {
+  height: 1px;
+  margin: 24px 0 4px;
+  background: #1f2937;
+}
+
+.user-box {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.user-box span {
+  max-width: 220px;
+  overflow-wrap: anywhere;
+}
+
+.notifications-panel {
+  grid-column: 1 / -1;
+}

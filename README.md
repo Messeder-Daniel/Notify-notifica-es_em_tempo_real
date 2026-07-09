@@ -431,3 +431,13 @@ O arquivo `learning-diary.md` registra as etapas de aprendizado, decisões técn
 Projeto funcional e integrado.
 
 Inclui backend, banco de dados, autenticação, WebSocket e frontend consumindo a API em tempo real.
+
+Funcionalidades:
+- Cadastro de novos usuários.
+- Atualização de dados da conta.
+- Alteração de senha com validação da senha atual.
+
+Endpoints:
+POST  /auth/register
+PATCH /auth/me
+PATCH /auth/password

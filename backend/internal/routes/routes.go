@@ -24,6 +24,7 @@ func RegisterRoutes(router *gin.Engine, db *pgxpool.Pool, jwtSecret string, hub 
 	webSocketHandler := handlers.NewWebSocketHandler(hub, jwtSecret)
 
 	router.GET("/health", healthHandler.Check)
+	router.POST("/auth/register", authHandler.Register)
 	router.POST("/auth/login", authHandler.Login)
 	router.GET("/ws", webSocketHandler.Connect)
 
@@ -31,6 +32,8 @@ func RegisterRoutes(router *gin.Engine, db *pgxpool.Pool, jwtSecret string, hub 
 	protected.Use(middlewares.AuthMiddleware(jwtSecret))
 
 	protected.GET("/auth/me", authHandler.Me)
+	protected.PATCH("/auth/me", authHandler.UpdateMe)
+	protected.PATCH("/auth/password", authHandler.ChangePassword)
 	protected.GET("/notifications", notificationHandler.FindByUserID)
 	protected.POST("/notifications", notificationHandler.Create)
 	protected.PATCH("/notifications/:id/read", notificationHandler.MarkAsRead)
