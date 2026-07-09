@@ -1,6 +1,6 @@
-# Real-Time Notifications
+# Notify
 
-Sistema de notificações em tempo real usando **WebSockets**, desenvolvido com:
+Notify usando **WebSockets**, desenvolvido com:
 
 - **Backend:** Go + Gin
 - **Frontend:** Vite + TypeScript

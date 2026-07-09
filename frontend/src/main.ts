@@ -134,7 +134,7 @@ function renderAuthPage(): string {
   return `
     <main class="auth-page">
       <section class="auth-card">
-        <p class="eyebrow">Sistema de notificações em tempo real</p>
+        <p class="eyebrow">Notify</p>
         <h1>${isRegister ? 'Criar conta' : 'Entrar'}</h1>
         <p class="description">
           ${isRegister
@@ -244,9 +244,9 @@ function renderDashboard(): string {
       <header class="dashboard-header">
         <div>
           <p class="eyebrow">Dashboard</p>
-          <h1>Real-Time Notifications</h1>
+          <h1>Notify</h1>
           <p class="description">
-            Painel do usuário autenticado com integração HTTP + WebSocket.
+            Central de notificações em tempo real com conta, status e eventos ao vivo.
           </p>
         </div>
 
