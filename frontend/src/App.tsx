@@ -7,6 +7,7 @@ import {
   Clock3,
   History,
   Inbox,
+  Users,
   LogOut,
   MessageSquareReply,
   Radio,
@@ -33,7 +34,7 @@ const API_URL = "http://localhost:8080"
 const WS_URL = "ws://localhost:8080"
 
 type ConnectionStatus = "disconnected" | "connecting" | "connected"
-type AppPage = "inbox" | "compose" | "sent" | "account"
+type AppPage = "inbox" | "compose" | "sent" | "users" | "account"
 
 function loadStoredUser(): User | null {
   const storedUser = localStorage.getItem("user")
@@ -107,6 +108,7 @@ export function App() {
   const [user, setUser] = useState<User | null>(() => loadStoredUser())
   const [receivedNotifications, setReceivedNotifications] = useState<Notification[]>([])
   const [sentNotifications, setSentNotifications] = useState<Notification[]>([])
+  const [users, setUsers] = useState<User[]>([])
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>("disconnected")
   const [currentPage, setCurrentPage] = useState<AppPage>("inbox")
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
@@ -238,8 +240,24 @@ export function App() {
     setSentNotifications(data)
   }
 
+  async function loadUsers() {
+    if (user?.role !== "admin") {
+      setUsers([])
+      return
+    }
+
+    const data = await apiRequest<User[]>("/users")
+    setUsers(data)
+  }
+
   async function refreshAll() {
-    await Promise.all([loadReceivedNotifications(), loadSentNotifications()])
+    const requests = [loadReceivedNotifications(), loadSentNotifications()]
+
+    if (user?.role === "admin") {
+      requests.push(loadUsers())
+    }
+
+    await Promise.all(requests)
   }
 
   function connectWebSocket(currentToken: string) {
@@ -376,6 +394,21 @@ export function App() {
       }
 
       setSuccessMessage("Resposta enviada com sucesso.")
+    })
+  }
+
+  async function handleUpdateUserRole(targetUser: User, role: "admin" | "user") {
+    await runWithFeedback(async () => {
+      const updatedUser = await apiRequest<User>(`/users/${targetUser.id}/role`, {
+        method: "PATCH",
+        body: JSON.stringify({ role }),
+      })
+
+      setUsers((currentUsers) =>
+        currentUsers.map((item) => (item.id === updatedUser.id ? updatedUser : item)),
+      )
+
+      setSuccessMessage(`Papel de ${updatedUser.name} atualizado para ${role}.`)
     })
   }
 
@@ -643,6 +676,16 @@ export function App() {
                 <History className="size-4" />
               </NavIconButton>
 
+              {user?.role === "admin" ? (
+                <NavIconButton
+                  label="Usuários"
+                  active={currentPage === "users"}
+                  onClick={() => setCurrentPage("users")}
+                >
+                  <Users className="size-4" />
+                </NavIconButton>
+              ) : null}
+
               <NavIconButton
                 label="Minha conta"
                 active={currentPage === "account"}
@@ -696,6 +739,16 @@ export function App() {
         ) : null}
 
         {currentPage === "sent" ? <SentPage sentNotifications={sentNotifications} /> : null}
+
+        {currentPage === "users" && user?.role === "admin" ? (
+          <UsersPage
+            users={users}
+            currentUser={user}
+            isLoading={isLoading}
+            onUpdateUserRole={handleUpdateUserRole}
+            onRefresh={() => void runWithFeedback(loadUsers)}
+          />
+        ) : null}
 
         {currentPage === "account" ? (
           <AccountPage
@@ -893,6 +946,88 @@ function SentPage({ sentNotifications }: { sentNotifications: Notification[] }) 
             {sentNotifications.map((notification) => (
               <SentNotificationItem key={notification.id} notification={notification} />
             ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
+
+function UsersPage({
+  users,
+  currentUser,
+  isLoading,
+  onUpdateUserRole,
+  onRefresh,
+}: {
+  users: User[]
+  currentUser: User | null
+  isLoading: boolean
+  onUpdateUserRole: (targetUser: User, role: "admin" | "user") => Promise<void>
+  onRefresh: () => void
+}) {
+  return (
+    <Card>
+      <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <CardTitle>Gerenciar usuários</CardTitle>
+          <CardDescription>
+            Liste usuários cadastrados e altere o papel entre administrador e usuário comum.
+          </CardDescription>
+        </div>
+
+        <Button variant="outline" onClick={onRefresh}>
+          <RefreshCcw className="mr-2 size-4" />
+          Atualizar
+        </Button>
+      </CardHeader>
+
+      <CardContent>
+        {users.length === 0 ? (
+          <EmptyState title="Nenhum usuário encontrado" description="Cadastre usuários para gerenciá-los aqui." />
+        ) : (
+          <div className="divide-y rounded-xl border">
+            {users.map((item) => {
+              const isCurrentUser = currentUser?.id === item.id
+
+              return (
+                <article
+                  key={item.id}
+                  className="grid gap-4 p-4 md:grid-cols-[1fr_auto] md:items-center"
+                >
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="font-semibold">{item.name}</h3>
+                      <Badge variant={item.role === "admin" ? "default" : "secondary"}>
+                        {item.role === "admin" ? "Admin" : "User"}
+                      </Badge>
+                      {isCurrentUser ? <Badge variant="outline">Você</Badge> : null}
+                    </div>
+
+                    <p className="mt-1 break-all text-sm text-slate-600">{item.email}</p>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      variant={item.role === "admin" ? "default" : "outline"}
+                      disabled={isLoading || isCurrentUser || item.role === "admin"}
+                      onClick={() => void onUpdateUserRole(item, "admin")}
+                    >
+                      Tornar admin
+                    </Button>
+
+                    <Button
+                      variant={item.role === "user" ? "default" : "outline"}
+                      disabled={isLoading || isCurrentUser || item.role === "user"}
+                      onClick={() => void onUpdateUserRole(item, "user")}
+                    >
+                      Tornar user
+                    </Button>
+                  </div>
+                </article>
+              )
+            })}
           </div>
         )}
       </CardContent>

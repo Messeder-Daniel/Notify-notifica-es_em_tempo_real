@@ -218,3 +218,37 @@ func (repository *UserRepository) UpdatePassword(ctx context.Context, id, passwo
 
 	return nil
 }
+
+func (repository *UserRepository) UpdateRole(ctx context.Context, id, role string) (*models.UserResponse, error) {
+	query := `
+		UPDATE users
+		SET role = $1
+		WHERE id = $2
+		RETURNING
+			id::text,
+			name,
+			email,
+			role,
+			created_at
+	`
+
+	var user models.UserResponse
+
+	err := repository.db.QueryRow(ctx, query, role, id).Scan(
+		&user.ID,
+		&user.Name,
+		&user.Email,
+		&user.Role,
+		&user.CreatedAt,
+	)
+
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+
+		return nil, fmt.Errorf("failed to update user role: %w", err)
+	}
+
+	return &user, nil
+}
