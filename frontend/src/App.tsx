@@ -11,7 +11,6 @@ import {
   MessageSquareReply,
   Radio,
   RefreshCcw,
-  RotateCcw,
   Send,
   Settings,
   ShieldCheck,
@@ -51,11 +50,21 @@ function loadStoredUser(): User | null {
   }
 }
 
-function formatDate(value: string): string {
+function formatDate(value?: string | null): string {
+  if (!value) {
+    return "Data indisponível"
+  }
+
+  const date = new Date(value)
+
+  if (Number.isNaN(date.getTime())) {
+    return "Data inválida"
+  }
+
   return new Intl.DateTimeFormat("pt-BR", {
     dateStyle: "short",
     timeStyle: "short",
-  }).format(new Date(value))
+  }).format(date)
 }
 
 function formatDuration(from: string, to?: string | null): string {
@@ -416,16 +425,16 @@ export function App() {
       : `/notifications/${notification.id}/read`
 
     await runWithFeedback(async () => {
-      const updatedNotification = await apiRequest<Notification>(endpoint, {
+      await apiRequest<Notification>(endpoint, {
         method: "PATCH",
       })
 
-      upsertReceivedNotification(updatedNotification)
+      await refreshAll()
 
       setSuccessMessage(
-        updatedNotification.is_read
-          ? "Notificação marcada como lida."
-          : "Notificação marcada como não lida.",
+        notification.is_read
+          ? "Notificação marcada como não lida."
+          : "Notificação marcada como lida.",
       )
     })
   }
@@ -436,16 +445,16 @@ export function App() {
       : `/notifications/${notification.id}/complete`
 
     await runWithFeedback(async () => {
-      const updatedNotification = await apiRequest<Notification>(endpoint, {
+      await apiRequest<Notification>(endpoint, {
         method: "PATCH",
       })
 
-      upsertReceivedNotification(updatedNotification)
+      await refreshAll()
 
       setSuccessMessage(
-        updatedNotification.is_completed
-          ? "Notificação concluída."
-          : "Notificação reaberta.",
+        notification.is_completed
+          ? "Notificação reaberta."
+          : "Notificação concluída.",
       )
     })
   }
@@ -1008,12 +1017,12 @@ function ReceivedNotificationItem({
 
       <div className="flex flex-wrap gap-2">
         <Button variant="outline" disabled={isLoading} onClick={() => void onUpdateReadStatus(notification)}>
-          {notification.is_read ? <RotateCcw className="mr-2 size-4" /> : <CheckCircle2 className="mr-2 size-4" />}
+          <CheckCircle2 className="mr-2 size-4" />
           {notification.is_read ? "Marcar como não lida" : "Marcar como lida"}
         </Button>
 
         <Button variant="outline" disabled={isLoading} onClick={() => void onUpdateCompletionStatus(notification)}>
-          {notification.is_completed ? <RotateCcw className="mr-2 size-4" /> : <CheckCircle2 className="mr-2 size-4" />}
+          <CheckCircle2 className="mr-2 size-4" />
           {notification.is_completed ? "Reabrir" : "Concluir"}
         </Button>
       </div>
