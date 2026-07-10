@@ -602,3 +602,64 @@ Usando a URL `/ws?token=<jwt>`.
 
 A interface conseguiu fazer login, listar notificações, criar notificações, marcar como lidas e mostrar o WebSocket conectado.
 
+# Diário de Aprendizagem — Notify
+
+## Contexto do projeto
+
+O projeto Notify foi desenvolvido como um sistema de notificações em tempo real usando WebSockets.
+
+A stack exigida foi:
+
+- Golang com Gin no backend;
+- Vite com TypeScript no frontend;
+- PostgreSQL como banco de dados;
+- entrega por repositório no GitHub.
+
+Como eu ainda não tinha domínio das ferramentas propostas, usei Inteligência Artificial como apoio para construir o projeto e, ao mesmo tempo, entender cada etapa.
+
+O foco não foi apenas gerar código, mas compreender:
+
+- como estruturar um backend em Go;
+- como criar uma API REST;
+- como conectar com PostgreSQL;
+- como autenticar usuários;
+- como usar WebSocket;
+- como integrar frontend e backend;
+- como documentar e preparar uma entrega executável.
+
+---
+
+## Estratégia adotada
+
+A estratégia foi dividir o projeto em etapas pequenas.
+
+Em vez de pedir para a IA gerar tudo de uma vez, o projeto foi construído gradualmente:
+
+1. entender o problema;
+2. planejar a arquitetura;
+3. criar a base do backend;
+4. criar o banco;
+5. criar autenticação;
+6. criar notificações;
+7. adicionar WebSocket;
+8. criar o frontend;
+9. melhorar a interface;
+10. adicionar papéis de usuário;
+11. testar fluxo completo;
+12. limpar dados;
+13. atualizar documentação.
+
+Essa abordagem facilitou o aprendizado, porque cada etapa teve um objetivo claro.
+
+---
+
+## Etapa 1 — Estrutura inicial
+
+Foi criada a estrutura inicial do projeto:
+
+```text
+backend/
+frontend/
+docs/
+README.md
+docker-compose.yml
