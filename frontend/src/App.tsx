@@ -30,8 +30,9 @@ import { Separator } from "@/components/ui/separator"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
 
-const API_URL = "http://localhost:8080"
-const WS_URL = "ws://localhost:8080"
+const API_HOST = window.location.hostname
+const API_URL = `http://${API_HOST}:8080`
+const WS_URL = `ws://${API_HOST}:8080`
 
 type ConnectionStatus = "disconnected" | "connecting" | "connected"
 type AppPage = "inbox" | "compose" | "sent" | "users" | "account"

@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/gin-contrib/cors"
@@ -28,9 +29,10 @@ func main() {
 	router := gin.Default()
 
 	router.Use(cors.New(cors.Config{
-		AllowOrigins: []string{
-			"http://localhost:5173",
-			"http://localhost:5174",
+		AllowOriginFunc: func(origin string) bool {
+			return strings.HasPrefix(origin, "http://localhost:") ||
+				strings.HasPrefix(origin, "http://127.0.0.1:") ||
+				strings.HasPrefix(origin, "http://192.168.")
 		},
 		AllowMethods: []string{
 			"GET",
@@ -58,7 +60,7 @@ func main() {
 
 	log.Printf("Starting server on port %s", cfg.ServerPort)
 
-	if err := router.Run(":" + cfg.ServerPort); err != nil {
+	if err := router.Run("0.0.0.0:" + cfg.ServerPort); err != nil {
 		log.Fatalf("Failed to start server: %v", err)
 	}
 }
