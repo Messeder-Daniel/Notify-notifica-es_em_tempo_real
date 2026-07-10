@@ -4,7 +4,11 @@ import {
   Bell,
   CheckCircle2,
   CircleAlert,
+  Clock3,
+  History,
+  Inbox,
   LogOut,
+  MessageSquareReply,
   Radio,
   RefreshCcw,
   RotateCcw,
@@ -30,7 +34,7 @@ const API_URL = "http://localhost:8080"
 const WS_URL = "ws://localhost:8080"
 
 type ConnectionStatus = "disconnected" | "connecting" | "connected"
-type Page = "notifications" | "account"
+type AppPage = "inbox" | "compose" | "sent" | "account"
 
 function loadStoredUser(): User | null {
   const storedUser = localStorage.getItem("user")
@@ -54,6 +58,33 @@ function formatDate(value: string): string {
   }).format(new Date(value))
 }
 
+function formatDuration(from: string, to?: string | null): string {
+  if (!to) {
+    return "Ainda não concluída"
+  }
+
+  const start = new Date(from).getTime()
+  const end = new Date(to).getTime()
+  const diffInMinutes = Math.max(0, Math.round((end - start) / 60000))
+
+  if (diffInMinutes < 1) {
+    return "menos de 1 min"
+  }
+
+  if (diffInMinutes < 60) {
+    return `${diffInMinutes} min`
+  }
+
+  const hours = Math.floor(diffInMinutes / 60)
+  const minutes = diffInMinutes % 60
+
+  if (minutes === 0) {
+    return `${hours}h`
+  }
+
+  return `${hours}h ${minutes}min`
+}
+
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error) {
     return error.message
@@ -65,9 +96,10 @@ function getErrorMessage(error: unknown): string {
 export function App() {
   const [token, setToken] = useState<string | null>(() => localStorage.getItem("token"))
   const [user, setUser] = useState<User | null>(() => loadStoredUser())
-  const [notifications, setNotifications] = useState<Notification[]>([])
+  const [receivedNotifications, setReceivedNotifications] = useState<Notification[]>([])
+  const [sentNotifications, setSentNotifications] = useState<Notification[]>([])
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>("disconnected")
-  const [currentPage, setCurrentPage] = useState<Page>("notifications")
+  const [currentPage, setCurrentPage] = useState<AppPage>("inbox")
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
@@ -75,9 +107,16 @@ export function App() {
   const socketRef = useRef<WebSocket | null>(null)
 
   const unreadCount = useMemo(
-    () => notifications.filter((notification) => !notification.is_read).length,
-    [notifications],
+    () => receivedNotifications.filter((notification) => !notification.is_read).length,
+    [receivedNotifications],
   )
+
+  const completedCount = useMemo(
+    () => receivedNotifications.filter((notification) => notification.is_completed).length,
+    [receivedNotifications],
+  )
+
+  const roleLabel = user?.role === "admin" ? "Administrador" : "Usuário"
 
   const saveSession = (newToken: string, newUser: User) => {
     setToken(newToken)
@@ -95,9 +134,10 @@ export function App() {
   const clearSession = () => {
     setToken(null)
     setUser(null)
-    setNotifications([])
+    setReceivedNotifications([])
+    setSentNotifications([])
     setConnectionStatus("disconnected")
-    setCurrentPage("notifications")
+    setCurrentPage("inbox")
     setErrorMessage(null)
     setSuccessMessage(null)
 
@@ -161,21 +201,36 @@ export function App() {
     }
   }
 
-  function upsertNotification(notification: Notification) {
-    setNotifications((currentNotifications) => {
-      const index = currentNotifications.findIndex((item) => item.id === notification.id)
-
-      if (index >= 0) {
-        return currentNotifications.map((item) => (item.id === notification.id ? notification : item))
-      }
-
-      return [notification, ...currentNotifications]
-    })
+  function upsertReceivedNotification(notification: Notification) {
+    setReceivedNotifications((currentNotifications) => upsertNotification(currentNotifications, notification))
   }
 
-  async function loadNotifications() {
+  function upsertSentNotification(notification: Notification) {
+    setSentNotifications((currentNotifications) => upsertNotification(currentNotifications, notification))
+  }
+
+  function upsertNotification(currentNotifications: Notification[], notification: Notification) {
+    const exists = currentNotifications.some((item) => item.id === notification.id)
+
+    if (exists) {
+      return currentNotifications.map((item) => (item.id === notification.id ? notification : item))
+    }
+
+    return [notification, ...currentNotifications]
+  }
+
+  async function loadReceivedNotifications() {
     const data = await apiRequest<Notification[]>("/notifications")
-    setNotifications(data)
+    setReceivedNotifications(data)
+  }
+
+  async function loadSentNotifications() {
+    const data = await apiRequest<Notification[]>("/notifications/sent")
+    setSentNotifications(data)
+  }
+
+  async function refreshAll() {
+    await Promise.all([loadReceivedNotifications(), loadSentNotifications()])
   }
 
   function connectWebSocket(currentToken: string) {
@@ -202,10 +257,10 @@ export function App() {
         }
 
         if (websocketEvent.type === "notification.created") {
-          upsertNotification(websocketEvent.data)
+          upsertReceivedNotification(websocketEvent.data)
 
           toast(websocketEvent.data.title, {
-            description: websocketEvent.data.message,
+            description: `${websocketEvent.data.sender_name}: ${websocketEvent.data.message}`,
           })
 
           setSuccessMessage("Nova notificação recebida em tempo real.")
@@ -274,7 +329,7 @@ export function App() {
     const message = String(formData.get("message") ?? "").trim()
 
     await runWithFeedback(async () => {
-      const notification = await apiRequest<Notification>("/admin/notifications", {
+      const notification = await apiRequest<Notification>("/notifications", {
         method: "POST",
         body: JSON.stringify({
           recipient_email: recipientEmail,
@@ -283,12 +338,35 @@ export function App() {
         }),
       })
 
-      if (notification.user_id === user?.id) {
-        upsertNotification(notification)
+      upsertSentNotification(notification)
+
+      if (notification.recipient_id === user?.id) {
+        upsertReceivedNotification(notification)
       }
 
       form.reset()
-      setSuccessMessage("Notificação enviada ao usuário destinatário.")
+      setSuccessMessage("Notificação enviada com sucesso.")
+      setCurrentPage("sent")
+    })
+  }
+
+  async function handleReply(notification: Notification, message: string) {
+    await runWithFeedback(async () => {
+      const reply = await apiRequest<Notification>(`/notifications/${notification.id}/replies`, {
+        method: "POST",
+        body: JSON.stringify({
+          title: `Resposta: ${notification.title}`,
+          message,
+        }),
+      })
+
+      upsertSentNotification(reply)
+
+      if (reply.recipient_id === user?.id) {
+        upsertReceivedNotification(reply)
+      }
+
+      setSuccessMessage("Resposta enviada com sucesso.")
     })
   }
 
@@ -342,12 +420,32 @@ export function App() {
         method: "PATCH",
       })
 
-      upsertNotification(updatedNotification)
+      upsertReceivedNotification(updatedNotification)
 
       setSuccessMessage(
         updatedNotification.is_read
           ? "Notificação marcada como lida."
           : "Notificação marcada como não lida.",
+      )
+    })
+  }
+
+  async function handleUpdateCompletionStatus(notification: Notification) {
+    const endpoint = notification.is_completed
+      ? `/notifications/${notification.id}/reopen`
+      : `/notifications/${notification.id}/complete`
+
+    await runWithFeedback(async () => {
+      const updatedNotification = await apiRequest<Notification>(endpoint, {
+        method: "PATCH",
+      })
+
+      upsertReceivedNotification(updatedNotification)
+
+      setSuccessMessage(
+        updatedNotification.is_completed
+          ? "Notificação concluída."
+          : "Notificação reaberta.",
       )
     })
   }
@@ -371,7 +469,7 @@ export function App() {
         }
 
         saveUser(currentUser)
-        await loadNotifications()
+        await refreshAll()
 
         if (token) {
           connectWebSocket(token)
@@ -391,16 +489,13 @@ export function App() {
 
     return () => {
       isMounted = false
-    }
-  }, [token])
 
-  useEffect(() => {
-    return () => {
       if (socketRef.current) {
         socketRef.current.close()
+        socketRef.current = null
       }
     }
-  }, [])
+  }, [token])
 
   if (!token) {
     return (
@@ -413,7 +508,7 @@ export function App() {
             <p className="text-xs font-bold uppercase tracking-[0.22em] text-blue-600">Notify</p>
             <CardTitle className="text-3xl">Acesse sua central</CardTitle>
             <CardDescription>
-              Entre ou crie uma conta para receber notificações em tempo real pelo navegador.
+              Entre ou crie uma conta para enviar e receber notificações em tempo real.
             </CardDescription>
           </CardHeader>
 
@@ -430,12 +525,18 @@ export function App() {
                 <form className="mt-5 grid gap-4" onSubmit={handleLogin}>
                   <div className="grid gap-2">
                     <Label htmlFor="login-email">E-mail</Label>
-                    <Input id="login-email" name="email" type="email" defaultValue="daniel@example.com" required />
+                    <Input
+                      id="login-email"
+                      name="email"
+                      type="email"
+                      defaultValue="messederdaniel@outlook.com"
+                      required
+                    />
                   </div>
 
                   <div className="grid gap-2">
                     <Label htmlFor="login-password">Senha</Label>
-                    <Input id="login-password" name="password" type="password" defaultValue="password" required />
+                    <Input id="login-password" name="password" type="password" defaultValue="Teste@2026" required />
                   </div>
 
                   <Button type="submit" disabled={isLoading}>
@@ -444,7 +545,7 @@ export function App() {
                 </form>
 
                 <p className="mt-4 text-xs text-slate-500">
-                  Usuário de teste: <strong>daniel@example.com</strong> / <strong>password</strong>
+                  Admin: <strong>messederdaniel@outlook.com</strong> / <strong>Teste@2026</strong>
                 </p>
               </TabsContent>
 
@@ -488,47 +589,68 @@ export function App() {
   return (
     <main className="min-h-screen bg-slate-50 px-4 py-6 text-slate-950 md:px-8">
       <div className="mx-auto grid max-w-6xl gap-5">
-        <header className="flex flex-col gap-4 rounded-2xl border bg-white p-5 shadow-sm lg:flex-row lg:items-center lg:justify-between">
+        <header className="flex flex-col gap-4 rounded-2xl border bg-white p-5 shadow-sm xl:flex-row xl:items-center xl:justify-between">
           <div>
-            <h1 className="text-4xl font-black tracking-tight text-blue-600 md:text-5xl">
-              Notify
-            </h1>
+            <h1 className="text-4xl font-black tracking-tight text-blue-600 md:text-5xl">Notify</h1>
             <p className="mt-2 text-lg font-semibold text-slate-900">
-              Central de notificações
+              {user?.role === "admin" ? "Painel administrador" : "Painel do usuário"}
             </p>
             <p className="mt-1 max-w-2xl text-sm text-slate-600">
-              Acompanhe eventos em tempo real, gerencie sua conta e valide a integração entre HTTP,
-              PostgreSQL e WebSocket.
+              Envie, receba, responda e acompanhe notificações em tempo real via WebSocket.
             </p>
           </div>
 
           <div className="flex flex-col gap-3 rounded-2xl border bg-slate-50 p-3 text-sm text-slate-600 sm:flex-row sm:items-center">
-            <div className="min-w-0 sm:max-w-48">
-              <strong className="block truncate text-slate-950">{user?.name}</strong>
+            <div className="min-w-0 sm:max-w-52">
+              <div className="flex items-center gap-2">
+                <strong className="block truncate text-slate-950">{user?.name}</strong>
+                <Badge variant={user?.role === "admin" ? "default" : "secondary"}>{roleLabel}</Badge>
+              </div>
               <span className="block truncate text-xs">{user?.email}</span>
             </div>
 
             <div className="flex flex-wrap gap-2">
-              <Button
-                type="button"
-                aria-label="Notificações"
-                title="Notificações"
-                variant={currentPage === "notifications" ? "default" : "outline"}
-                className="size-9 rounded-full p-0"
-                onClick={() => setCurrentPage("notifications")}
+              <NavIconButton
+                label="Recebidas"
+                active={currentPage === "inbox"}
+                onClick={() => setCurrentPage("inbox")}
               >
-                <Bell className="size-4" />
-              </Button>
+                <Inbox className="size-4" />
+              </NavIconButton>
 
-              <Button
-                type="button"
-                aria-label="Minha conta"
-                title="Minha conta"
-                variant={currentPage === "account" ? "default" : "outline"}
-                className="size-9 rounded-full p-0"
+              <NavIconButton
+                label="Enviar"
+                active={currentPage === "compose"}
+                onClick={() => setCurrentPage("compose")}
+              >
+                <Send className="size-4" />
+              </NavIconButton>
+
+              <NavIconButton
+                label="Enviadas"
+                active={currentPage === "sent"}
+                onClick={() => setCurrentPage("sent")}
+              >
+                <History className="size-4" />
+              </NavIconButton>
+
+              <NavIconButton
+                label="Minha conta"
+                active={currentPage === "account"}
                 onClick={() => setCurrentPage("account")}
               >
                 <UserCircle className="size-4" />
+              </NavIconButton>
+
+              <Button
+                type="button"
+                aria-label="Atualizar"
+                title="Atualizar"
+                variant="outline"
+                className="size-9 rounded-full p-0"
+                onClick={() => void runWithFeedback(refreshAll)}
+              >
+                <RefreshCcw className="size-4" />
               </Button>
 
               <Button
@@ -547,152 +669,117 @@ export function App() {
 
         <Feedback errorMessage={errorMessage} successMessage={successMessage} />
 
-        {currentPage === "notifications" ? (
-          <NotificationsPage
-            notifications={notifications}
+        {currentPage === "inbox" ? (
+          <InboxPage
+            receivedNotifications={receivedNotifications}
             unreadCount={unreadCount}
+            completedCount={completedCount}
             connectionStatus={connectionStatus}
             isLoading={isLoading}
-            onCreateNotification={handleCreateNotification}
-            onRefresh={() => void runWithFeedback(loadNotifications)}
             onUpdateReadStatus={handleUpdateReadStatus}
+            onUpdateCompletionStatus={handleUpdateCompletionStatus}
+            onReply={handleReply}
           />
-        ) : (
+        ) : null}
+
+        {currentPage === "compose" ? (
+          <ComposePage isLoading={isLoading} onCreateNotification={handleCreateNotification} />
+        ) : null}
+
+        {currentPage === "sent" ? <SentPage sentNotifications={sentNotifications} /> : null}
+
+        {currentPage === "account" ? (
           <AccountPage
             user={user}
             isLoading={isLoading}
             onUpdateProfile={handleUpdateProfile}
             onChangePassword={handleChangePassword}
           />
-        )}
+        ) : null}
       </div>
     </main>
   )
 }
 
-function NotificationsPage({
-  notifications,
+function NavIconButton({
+  label,
+  active,
+  onClick,
+  children,
+}: {
+  label: string
+  active: boolean
+  onClick: () => void
+  children: ReactNode
+}) {
+  return (
+    <Button
+      type="button"
+      aria-label={label}
+      title={label}
+      variant={active ? "default" : "outline"}
+      className="size-9 rounded-full p-0"
+      onClick={onClick}
+    >
+      {children}
+    </Button>
+  )
+}
+
+function InboxPage({
+  receivedNotifications,
   unreadCount,
+  completedCount,
   connectionStatus,
   isLoading,
-  onCreateNotification,
-  onRefresh,
   onUpdateReadStatus,
+  onUpdateCompletionStatus,
+  onReply,
 }: {
-  notifications: Notification[]
+  receivedNotifications: Notification[]
   unreadCount: number
+  completedCount: number
   connectionStatus: ConnectionStatus
   isLoading: boolean
-  onCreateNotification: (event: FormEvent<HTMLFormElement>) => Promise<void>
-  onRefresh: () => void
   onUpdateReadStatus: (notification: Notification) => Promise<void>
+  onUpdateCompletionStatus: (notification: Notification) => Promise<void>
+  onReply: (notification: Notification, message: string) => Promise<void>
 }) {
   return (
     <>
-      <section className="grid gap-4 md:grid-cols-3">
+      <section className="grid gap-4 md:grid-cols-4">
         <SummaryCard
           title="WebSocket"
           value={getConnectionLabel(connectionStatus)}
           icon={<Radio className="size-5" />}
           status={connectionStatus}
         />
-        <SummaryCard title="Total" value={String(notifications.length)} icon={<Bell className="size-5" />} />
+        <SummaryCard title="Recebidas" value={String(receivedNotifications.length)} icon={<Bell className="size-5" />} />
         <SummaryCard title="Não lidas" value={String(unreadCount)} icon={<CircleAlert className="size-5" />} />
-      </section>
-
-      <section className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
-        <Card>
-          <CardHeader>
-            <CardTitle>Painel admin</CardTitle>
-            <CardDescription>
-              Envie uma mensagem para um usuário destinatário. Se ele estiver conectado, receberá um Sonner em tempo real.
-            </CardDescription>
-          </CardHeader>
-
-          <CardContent>
-            <form className="grid gap-5" onSubmit={onCreateNotification}>
-              <div className="grid gap-2">
-                <Label htmlFor="recipient-email">E-mail do destinatário</Label>
-                <Input
-                  id="recipient-email"
-                  name="recipient_email"
-                  type="email"
-                  placeholder="usuario@example.com"
-                  required
-                />
-              </div>
-
-              <div className="grid gap-2">
-                <Label htmlFor="notification-title">Título</Label>
-                <Input id="notification-title" name="title" placeholder="Ex: Deploy concluído" required />
-              </div>
-
-              <div className="grid gap-2">
-                <Label htmlFor="notification-message">Mensagem</Label>
-                <Textarea
-                  id="notification-message"
-                  name="message"
-                  rows={9}
-                  placeholder="Descreva o evento da notificação com mais detalhes"
-                  required
-                />
-              </div>
-
-              <Button type="submit" className="w-full sm:w-fit" disabled={isLoading}>
-                <Send className="mr-2 size-4" />
-                {isLoading ? "Enviando..." : "Enviar notificação"}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Como a entrega funciona</CardTitle>
-            <CardDescription>
-              Notificações são instantâneas para usuários conectados e persistidas para acesso posterior.
-            </CardDescription>
-          </CardHeader>
-
-          <CardContent className="grid gap-3 text-sm text-slate-600">
-            <p>
-              Se o usuário estiver autenticado e com o site aberto, o WebSocket recebe o evento em tempo real.
-            </p>
-            <p>
-              Se o usuário estiver deslogado ou fora do site, a notificação fica salva no PostgreSQL e aparece
-              quando ele acessar novamente.
-            </p>
-          </CardContent>
-        </Card>
+        <SummaryCard title="Concluídas" value={String(completedCount)} icon={<CheckCircle2 className="size-5" />} />
       </section>
 
       <Card>
-        <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <CardTitle>Notificações</CardTitle>
-            <CardDescription>Lista persistida no banco e atualizada em tempo real.</CardDescription>
-          </div>
-
-          <Button variant="outline" onClick={onRefresh}>
-            <RefreshCcw className="mr-2 size-4" />
-            Atualizar
-          </Button>
+        <CardHeader>
+          <CardTitle>Notificações recebidas</CardTitle>
+          <CardDescription>
+            Mensagens recebidas em tempo real. Ao chegar uma nova notificação, o Sonner aparece na tela.
+          </CardDescription>
         </CardHeader>
 
         <CardContent>
-          {notifications.length === 0 ? (
-            <div className="rounded-xl border border-dashed p-8 text-center text-sm text-slate-500">
-              <strong className="block text-slate-950">Nenhuma notificação ainda.</strong>
-              Crie uma notificação para testar o envio em tempo real.
-            </div>
+          {receivedNotifications.length === 0 ? (
+            <EmptyState title="Nenhuma notificação recebida" description="Quando alguém enviar uma notificação para você, ela aparecerá aqui." />
           ) : (
             <div className="divide-y rounded-xl border">
-              {notifications.map((notification) => (
-                <NotificationItem
+              {receivedNotifications.map((notification) => (
+                <ReceivedNotificationItem
                   key={notification.id}
                   notification={notification}
-                  onUpdateReadStatus={onUpdateReadStatus}
                   isLoading={isLoading}
+                  onUpdateReadStatus={onUpdateReadStatus}
+                  onUpdateCompletionStatus={onUpdateCompletionStatus}
+                  onReply={onReply}
                 />
               ))}
             </div>
@@ -700,6 +787,107 @@ function NotificationsPage({
         </CardContent>
       </Card>
     </>
+  )
+}
+
+function ComposePage({
+  isLoading,
+  onCreateNotification,
+}: {
+  isLoading: boolean
+  onCreateNotification: (event: FormEvent<HTMLFormElement>) => Promise<void>
+}) {
+  return (
+    <section className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
+      <Card>
+        <CardHeader>
+          <CardTitle>Enviar notificação</CardTitle>
+          <CardDescription>
+            Informe o destinatário, escreva a mensagem e envie em tempo real via WebSocket.
+          </CardDescription>
+        </CardHeader>
+
+        <CardContent>
+          <form className="grid gap-5" onSubmit={onCreateNotification}>
+            <div className="grid gap-2">
+              <Label htmlFor="recipient-email">E-mail do destinatário</Label>
+              <Input
+                id="recipient-email"
+                name="recipient_email"
+                type="email"
+                placeholder="barretodaniel11971@hotmail.com"
+                required
+              />
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="notification-title">Título</Label>
+              <Input id="notification-title" name="title" placeholder="Ex: Atualização necessária" required />
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="notification-message">Mensagem</Label>
+              <Textarea
+                id="notification-message"
+                name="message"
+                rows={10}
+                placeholder="Descreva a mensagem, orientação ou solicitação para o destinatário."
+                required
+              />
+            </div>
+
+            <Button type="submit" className="w-full sm:w-fit" disabled={isLoading}>
+              <Send className="mr-2 size-4" />
+              {isLoading ? "Enviando..." : "Enviar notificação"}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Fluxo em tempo real</CardTitle>
+          <CardDescription>Como esta tela se conecta ao requisito do projeto.</CardDescription>
+        </CardHeader>
+
+        <CardContent className="grid gap-3 text-sm text-slate-600">
+          <p>
+            Se o destinatário estiver logado e conectado via WebSocket, ele recebe um Sonner imediatamente.
+          </p>
+          <p>
+            Se estiver offline, a notificação fica persistida no PostgreSQL e aparece quando ele entrar.
+          </p>
+          <p>
+            O remetente consegue acompanhar depois se a notificação foi lida, concluída e quanto tempo levou.
+          </p>
+        </CardContent>
+      </Card>
+    </section>
+  )
+}
+
+function SentPage({ sentNotifications }: { sentNotifications: Notification[] }) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Histórico de enviadas</CardTitle>
+        <CardDescription>
+          Acompanhe para quem você enviou, se foi lida, se foi concluída e o tempo até conclusão.
+        </CardDescription>
+      </CardHeader>
+
+      <CardContent>
+        {sentNotifications.length === 0 ? (
+          <EmptyState title="Nenhuma notificação enviada" description="As notificações que você enviar aparecerão aqui." />
+        ) : (
+          <div className="divide-y rounded-xl border">
+            {sentNotifications.map((notification) => (
+              <SentNotificationItem key={notification.id} notification={notification} />
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   )
 }
 
@@ -771,6 +959,163 @@ function AccountPage({
   )
 }
 
+function ReceivedNotificationItem({
+  notification,
+  isLoading,
+  onUpdateReadStatus,
+  onUpdateCompletionStatus,
+  onReply,
+}: {
+  notification: Notification
+  isLoading: boolean
+  onUpdateReadStatus: (notification: Notification) => Promise<void>
+  onUpdateCompletionStatus: (notification: Notification) => Promise<void>
+  onReply: (notification: Notification, message: string) => Promise<void>
+}) {
+  return (
+    <article
+      className={`grid gap-4 border-l-4 p-4 ${
+        notification.is_completed
+          ? "border-emerald-500 bg-white"
+          : notification.is_read
+            ? "border-blue-500 bg-white"
+            : "border-amber-500 bg-amber-50/50"
+      }`}
+    >
+      <div className="grid gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant={notification.parent_id ? "outline" : "default"}>
+            {notification.parent_id ? "Resposta" : "Notificação"}
+          </Badge>
+          <Badge variant={notification.is_read ? "secondary" : "destructive"}>
+            {notification.is_read ? "Lida" : "Não lida"}
+          </Badge>
+          <Badge variant={notification.is_completed ? "default" : "outline"}>
+            {notification.is_completed ? "Concluída" : "Pendente"}
+          </Badge>
+          <time className="text-xs text-slate-500">{formatDate(notification.created_at)}</time>
+        </div>
+
+        <div>
+          <h3 className="font-semibold">{notification.title}</h3>
+          <p className="mt-1 text-sm text-slate-600">{notification.message}</p>
+        </div>
+
+        <div className="text-xs text-slate-500">
+          De: <strong>{notification.sender_name}</strong> &lt;{notification.sender_email}&gt;
+        </div>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        <Button variant="outline" disabled={isLoading} onClick={() => void onUpdateReadStatus(notification)}>
+          {notification.is_read ? <RotateCcw className="mr-2 size-4" /> : <CheckCircle2 className="mr-2 size-4" />}
+          {notification.is_read ? "Marcar como não lida" : "Marcar como lida"}
+        </Button>
+
+        <Button variant="outline" disabled={isLoading} onClick={() => void onUpdateCompletionStatus(notification)}>
+          {notification.is_completed ? <RotateCcw className="mr-2 size-4" /> : <CheckCircle2 className="mr-2 size-4" />}
+          {notification.is_completed ? "Reabrir" : "Concluir"}
+        </Button>
+      </div>
+
+      <ReplyBox notification={notification} isLoading={isLoading} onReply={onReply} />
+    </article>
+  )
+}
+
+function SentNotificationItem({ notification }: { notification: Notification }) {
+  return (
+    <article className="grid gap-4 border-l-4 border-blue-500 p-4 sm:grid-cols-[1fr_auto] sm:items-start">
+      <div className="grid gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant={notification.parent_id ? "outline" : "default"}>
+            {notification.parent_id ? "Resposta enviada" : "Enviada"}
+          </Badge>
+          <Badge variant={notification.is_read ? "secondary" : "outline"}>
+            {notification.is_read ? "Lida" : "Não lida"}
+          </Badge>
+          <Badge variant={notification.is_completed ? "default" : "outline"}>
+            {notification.is_completed ? "Concluída" : "Pendente"}
+          </Badge>
+          <time className="text-xs text-slate-500">{formatDate(notification.created_at)}</time>
+        </div>
+
+        <div>
+          <h3 className="font-semibold">{notification.title}</h3>
+          <p className="mt-1 text-sm text-slate-600">{notification.message}</p>
+        </div>
+
+        <div className="text-xs text-slate-500">
+          Para: <strong>{notification.recipient_name}</strong> &lt;{notification.recipient_email}&gt;
+        </div>
+      </div>
+
+      <div className="rounded-xl border bg-slate-50 p-3 text-sm text-slate-600">
+        <div className="flex items-center gap-2">
+          <Clock3 className="size-4" />
+          <span>{formatDuration(notification.created_at, notification.completed_at)}</span>
+        </div>
+      </div>
+    </article>
+  )
+}
+
+function ReplyBox({
+  notification,
+  isLoading,
+  onReply,
+}: {
+  notification: Notification
+  isLoading: boolean
+  onReply: (notification: Notification, message: string) => Promise<void>
+}) {
+  const [isOpen, setIsOpen] = useState(false)
+  const [message, setMessage] = useState("")
+
+  async function submitReply(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+
+    const trimmedMessage = message.trim()
+    if (!trimmedMessage) {
+      return
+    }
+
+    await onReply(notification, trimmedMessage)
+    setMessage("")
+    setIsOpen(false)
+  }
+
+  if (!isOpen) {
+    return (
+      <Button variant="ghost" className="w-fit px-0 text-blue-600" onClick={() => setIsOpen(true)}>
+        <MessageSquareReply className="mr-2 size-4" />
+        Responder
+      </Button>
+    )
+  }
+
+  return (
+    <form className="grid gap-3 rounded-xl border bg-white p-3" onSubmit={submitReply}>
+      <Label htmlFor={`reply-${notification.id}`}>Responder notificação</Label>
+      <Textarea
+        id={`reply-${notification.id}`}
+        value={message}
+        onChange={(event) => setMessage(event.target.value)}
+        placeholder="Escreva sua resposta ou dúvida"
+        rows={4}
+      />
+      <div className="flex flex-wrap gap-2">
+        <Button type="submit" disabled={isLoading || !message.trim()}>
+          Enviar resposta
+        </Button>
+        <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>
+          Cancelar
+        </Button>
+      </div>
+    </form>
+  )
+}
+
 function Feedback({
   errorMessage,
   successMessage,
@@ -827,47 +1172,12 @@ function SummaryCard({
   )
 }
 
-function NotificationItem({
-  notification,
-  onUpdateReadStatus,
-  isLoading,
-}: {
-  notification: Notification
-  onUpdateReadStatus: (notification: Notification) => Promise<void>
-  isLoading: boolean
-}) {
-  const readLabel = notification.is_read ? "Lida" : "Nova"
-  const actionLabel = notification.is_read ? "Marcar como não lida" : "Marcar como lida"
-
+function EmptyState({ title, description }: { title: string; description: string }) {
   return (
-    <article
-      className={`grid gap-4 border-l-4 p-4 sm:grid-cols-[1fr_auto] sm:items-center ${
-        notification.is_read ? "border-emerald-500 bg-white" : "border-blue-500 bg-slate-50"
-      }`}
-    >
-      <div>
-        <div className="mb-2 flex flex-wrap items-center gap-2">
-          <Badge variant={notification.is_read ? "secondary" : "default"}>{readLabel}</Badge>
-          <time className="text-xs text-slate-500">{formatDate(notification.created_at)}</time>
-        </div>
-
-        <h3 className="font-semibold">{notification.title}</h3>
-        <p className="mt-1 text-sm text-slate-600">{notification.message}</p>
-
-        {notification.read_at ? (
-          <small className="mt-2 block text-xs text-slate-500">Lida em {formatDate(notification.read_at)}</small>
-        ) : null}
-      </div>
-
-      <Button
-        variant="outline"
-        disabled={isLoading}
-        onClick={() => void onUpdateReadStatus(notification)}
-      >
-        {notification.is_read ? <RotateCcw className="mr-2 size-4" /> : <CheckCircle2 className="mr-2 size-4" />}
-        {actionLabel}
-      </Button>
-    </article>
+    <div className="rounded-xl border border-dashed p-8 text-center text-sm text-slate-500">
+      <strong className="block text-slate-950">{title}</strong>
+      {description}
+    </div>
   )
 }
 
