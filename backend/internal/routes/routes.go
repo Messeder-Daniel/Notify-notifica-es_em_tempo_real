@@ -17,7 +17,7 @@ func RegisterRoutes(router *gin.Engine, db *pgxpool.Pool, jwtSecret string, hub 
 	notificationRepository := repositories.NewNotificationRepository(db)
 
 	authService := services.NewAuthService(userRepository, jwtSecret)
-	notificationService := services.NewNotificationService(notificationRepository)
+	notificationService := services.NewNotificationService(notificationRepository, userRepository)
 
 	authHandler := handlers.NewAuthHandler(authService)
 	notificationHandler := handlers.NewNotificationHandler(notificationService, hub)
@@ -36,5 +36,7 @@ func RegisterRoutes(router *gin.Engine, db *pgxpool.Pool, jwtSecret string, hub 
 	protected.PATCH("/auth/password", authHandler.ChangePassword)
 	protected.GET("/notifications", notificationHandler.FindByUserID)
 	protected.POST("/notifications", notificationHandler.Create)
+	protected.POST("/admin/notifications", notificationHandler.CreateForRecipientEmail)
 	protected.PATCH("/notifications/:id/read", notificationHandler.MarkAsRead)
+	protected.PATCH("/notifications/:id/unread", notificationHandler.MarkAsUnread)
 }

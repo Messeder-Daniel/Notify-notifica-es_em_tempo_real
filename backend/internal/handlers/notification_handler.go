@@ -61,6 +61,49 @@ func (handler *NotificationHandler) Create(ctx *gin.Context) {
 	ctx.JSON(http.StatusCreated, notification)
 }
 
+func (handler *NotificationHandler) CreateForRecipientEmail(ctx *gin.Context) {
+	var request struct {
+		RecipientEmail string `json:"recipient_email" binding:"required,email"`
+		Title          string `json:"title" binding:"required"`
+		Message        string `json:"message" binding:"required"`
+	}
+
+	if err := ctx.ShouldBindJSON(&request); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
+		return
+	}
+
+	if _, ok := getAuthenticatedUserID(ctx); !ok {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "authenticated user not found"})
+		return
+	}
+
+	notification, err := handler.notificationService.CreateForRecipientEmail(
+		ctx.Request.Context(),
+		request.RecipientEmail,
+		request.Title,
+		request.Message,
+	)
+	if err != nil {
+		switch {
+		case errors.Is(err, services.ErrUserNotFound):
+			ctx.JSON(http.StatusNotFound, gin.H{"error": "recipient user not found"})
+			return
+		case errors.Is(err, services.ErrNotificationTitleRequired),
+			errors.Is(err, services.ErrNotificationMessageRequired):
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		default:
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "failed to send notification"})
+			return
+		}
+	}
+
+	handler.sendNotificationCreatedEvent(notification.UserID, notification)
+
+	ctx.JSON(http.StatusCreated, notification)
+}
+
 func (handler *NotificationHandler) FindByUserID(ctx *gin.Context) {
 	userID, ok := getAuthenticatedUserID(ctx)
 	if !ok {
@@ -78,6 +121,14 @@ func (handler *NotificationHandler) FindByUserID(ctx *gin.Context) {
 }
 
 func (handler *NotificationHandler) MarkAsRead(ctx *gin.Context) {
+	handler.updateReadStatus(ctx, true)
+}
+
+func (handler *NotificationHandler) MarkAsUnread(ctx *gin.Context) {
+	handler.updateReadStatus(ctx, false)
+}
+
+func (handler *NotificationHandler) updateReadStatus(ctx *gin.Context, shouldMarkAsRead bool) {
 	userID, ok := getAuthenticatedUserID(ctx)
 	if !ok {
 		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "authenticated user not found"})
@@ -86,14 +137,24 @@ func (handler *NotificationHandler) MarkAsRead(ctx *gin.Context) {
 
 	notificationID := ctx.Param("id")
 
-	notification, err := handler.notificationService.MarkAsRead(ctx.Request.Context(), notificationID, userID)
+	var (
+		notification *models.Notification
+		err          error
+	)
+
+	if shouldMarkAsRead {
+		notification, err = handler.notificationService.MarkAsRead(ctx.Request.Context(), notificationID, userID)
+	} else {
+		notification, err = handler.notificationService.MarkAsUnread(ctx.Request.Context(), notificationID, userID)
+	}
+
 	if err != nil {
 		if errors.Is(err, services.ErrNotificationNotFound) {
 			ctx.JSON(http.StatusNotFound, gin.H{"error": "notification not found"})
 			return
 		}
 
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "failed to mark notification as read"})
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update notification"})
 		return
 	}
 

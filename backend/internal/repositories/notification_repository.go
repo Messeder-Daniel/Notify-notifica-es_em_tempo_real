@@ -127,6 +127,37 @@ func (repository *NotificationRepository) MarkAsRead(ctx context.Context, notifi
 			read_at
 	`
 
+	return repository.updateReadStatus(ctx, query, notificationID, userID, "failed to mark notification as read")
+}
+
+func (repository *NotificationRepository) MarkAsUnread(ctx context.Context, notificationID string, userID string) (*models.Notification, error) {
+	query := `
+		UPDATE notifications
+		SET
+			is_read = FALSE,
+			read_at = NULL
+		WHERE id = $1
+		AND user_id = $2
+		RETURNING
+			id::text,
+			user_id::text,
+			title,
+			message,
+			is_read,
+			created_at,
+			read_at
+	`
+
+	return repository.updateReadStatus(ctx, query, notificationID, userID, "failed to mark notification as unread")
+}
+
+func (repository *NotificationRepository) updateReadStatus(
+	ctx context.Context,
+	query string,
+	notificationID string,
+	userID string,
+	errorMessage string,
+) (*models.Notification, error) {
 	var notification models.Notification
 
 	err := repository.db.QueryRow(ctx, query, notificationID, userID).Scan(
@@ -144,7 +175,7 @@ func (repository *NotificationRepository) MarkAsRead(ctx context.Context, notifi
 			return nil, nil
 		}
 
-		return nil, fmt.Errorf("failed to mark notification as read: %w", err)
+		return nil, fmt.Errorf("%s: %w", errorMessage, err)
 	}
 
 	return &notification, nil
