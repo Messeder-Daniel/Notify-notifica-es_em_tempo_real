@@ -26,43 +26,6 @@ func NewNotificationHandler(notificationService *services.NotificationService, h
 
 func (handler *NotificationHandler) Create(ctx *gin.Context) {
 	var request struct {
-		Title   string `json:"title" binding:"required"`
-		Message string `json:"message" binding:"required"`
-	}
-
-	if err := ctx.ShouldBindJSON(&request); err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
-		return
-	}
-
-	userID, ok := getAuthenticatedUserID(ctx)
-	if !ok {
-		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "authenticated user not found"})
-		return
-	}
-
-	notification, err := handler.notificationService.Create(ctx.Request.Context(), models.CreateNotificationRequest{
-		UserID:  userID,
-		Title:   request.Title,
-		Message: request.Message,
-	})
-	if err != nil {
-		if errors.Is(err, services.ErrNotificationTitleRequired) || errors.Is(err, services.ErrNotificationMessageRequired) {
-			ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-			return
-		}
-
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create notification"})
-		return
-	}
-
-	handler.sendNotificationCreatedEvent(userID, notification)
-
-	ctx.JSON(http.StatusCreated, notification)
-}
-
-func (handler *NotificationHandler) CreateForRecipientEmail(ctx *gin.Context) {
-	var request struct {
 		RecipientEmail string `json:"recipient_email" binding:"required,email"`
 		Title          string `json:"title" binding:"required"`
 		Message        string `json:"message" binding:"required"`
@@ -73,45 +36,72 @@ func (handler *NotificationHandler) CreateForRecipientEmail(ctx *gin.Context) {
 		return
 	}
 
-	if _, ok := getAuthenticatedUserID(ctx); !ok {
+	senderID, ok := getAuthenticatedUserID(ctx)
+	if !ok {
 		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "authenticated user not found"})
 		return
 	}
 
-	notification, err := handler.notificationService.CreateForRecipientEmail(
-		ctx.Request.Context(),
-		request.RecipientEmail,
-		request.Title,
-		request.Message,
-	)
+	notification, err := handler.notificationService.Create(ctx.Request.Context(), models.CreateNotificationRequest{
+		SenderID:       senderID,
+		RecipientEmail: request.RecipientEmail,
+		Title:          request.Title,
+		Message:        request.Message,
+	})
 	if err != nil {
-		switch {
-		case errors.Is(err, services.ErrUserNotFound):
-			ctx.JSON(http.StatusNotFound, gin.H{"error": "recipient user not found"})
-			return
-		case errors.Is(err, services.ErrNotificationTitleRequired),
-			errors.Is(err, services.ErrNotificationMessageRequired):
-			ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-			return
-		default:
-			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "failed to send notification"})
-			return
-		}
+		handler.handleNotificationError(ctx, err, "failed to create notification")
+		return
 	}
 
-	handler.sendNotificationCreatedEvent(notification.UserID, notification)
+	handler.sendNotificationCreatedEvent(notification.RecipientID, notification)
 
 	ctx.JSON(http.StatusCreated, notification)
 }
 
-func (handler *NotificationHandler) FindByUserID(ctx *gin.Context) {
+func (handler *NotificationHandler) CreateReply(ctx *gin.Context) {
+	var request struct {
+		Title   string `json:"title" binding:"required"`
+		Message string `json:"message" binding:"required"`
+	}
+
+	if err := ctx.ShouldBindJSON(&request); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
+		return
+	}
+
+	senderID, ok := getAuthenticatedUserID(ctx)
+	if !ok {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "authenticated user not found"})
+		return
+	}
+
+	parentID := ctx.Param("id")
+
+	notification, err := handler.notificationService.CreateReply(
+		ctx.Request.Context(),
+		parentID,
+		senderID,
+		request.Title,
+		request.Message,
+	)
+	if err != nil {
+		handler.handleNotificationError(ctx, err, "failed to create reply")
+		return
+	}
+
+	handler.sendNotificationCreatedEvent(notification.RecipientID, notification)
+
+	ctx.JSON(http.StatusCreated, notification)
+}
+
+func (handler *NotificationHandler) FindReceivedByUserID(ctx *gin.Context) {
 	userID, ok := getAuthenticatedUserID(ctx)
 	if !ok {
 		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "authenticated user not found"})
 		return
 	}
 
-	notifications, err := handler.notificationService.FindByUserID(ctx.Request.Context(), userID)
+	notifications, err := handler.notificationService.ListReceivedByUserID(ctx.Request.Context(), userID)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "failed to find notifications"})
 		return
@@ -120,15 +110,39 @@ func (handler *NotificationHandler) FindByUserID(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, notifications)
 }
 
+func (handler *NotificationHandler) FindSentByUserID(ctx *gin.Context) {
+	userID, ok := getAuthenticatedUserID(ctx)
+	if !ok {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "authenticated user not found"})
+		return
+	}
+
+	notifications, err := handler.notificationService.ListSentByUserID(ctx.Request.Context(), userID)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "failed to find sent notifications"})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, notifications)
+}
+
 func (handler *NotificationHandler) MarkAsRead(ctx *gin.Context) {
-	handler.updateReadStatus(ctx, true)
+	handler.updateNotificationStatus(ctx, "read")
 }
 
 func (handler *NotificationHandler) MarkAsUnread(ctx *gin.Context) {
-	handler.updateReadStatus(ctx, false)
+	handler.updateNotificationStatus(ctx, "unread")
 }
 
-func (handler *NotificationHandler) updateReadStatus(ctx *gin.Context, shouldMarkAsRead bool) {
+func (handler *NotificationHandler) MarkAsCompleted(ctx *gin.Context) {
+	handler.updateNotificationStatus(ctx, "complete")
+}
+
+func (handler *NotificationHandler) Reopen(ctx *gin.Context) {
+	handler.updateNotificationStatus(ctx, "reopen")
+}
+
+func (handler *NotificationHandler) updateNotificationStatus(ctx *gin.Context, action string) {
 	userID, ok := getAuthenticatedUserID(ctx)
 	if !ok {
 		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "authenticated user not found"})
@@ -138,30 +152,47 @@ func (handler *NotificationHandler) updateReadStatus(ctx *gin.Context, shouldMar
 	notificationID := ctx.Param("id")
 
 	var (
-		notification *models.Notification
+		notification *models.NotificationWithUsers
 		err          error
 	)
 
-	if shouldMarkAsRead {
+	switch action {
+	case "read":
 		notification, err = handler.notificationService.MarkAsRead(ctx.Request.Context(), notificationID, userID)
-	} else {
+	case "unread":
 		notification, err = handler.notificationService.MarkAsUnread(ctx.Request.Context(), notificationID, userID)
+	case "complete":
+		notification, err = handler.notificationService.MarkAsCompleted(ctx.Request.Context(), notificationID, userID)
+	case "reopen":
+		notification, err = handler.notificationService.Reopen(ctx.Request.Context(), notificationID, userID)
+	default:
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid notification action"})
+		return
 	}
 
 	if err != nil {
-		if errors.Is(err, services.ErrNotificationNotFound) {
-			ctx.JSON(http.StatusNotFound, gin.H{"error": "notification not found"})
-			return
-		}
-
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update notification"})
+		handler.handleNotificationError(ctx, err, "failed to update notification")
 		return
 	}
 
 	ctx.JSON(http.StatusOK, notification)
 }
 
-func (handler *NotificationHandler) sendNotificationCreatedEvent(userID string, notification *models.Notification) {
+func (handler *NotificationHandler) handleNotificationError(ctx *gin.Context, err error, defaultMessage string) {
+	switch {
+	case errors.Is(err, services.ErrNotificationNotFound):
+		ctx.JSON(http.StatusNotFound, gin.H{"error": "notification not found"})
+	case errors.Is(err, services.ErrUserNotFound):
+		ctx.JSON(http.StatusNotFound, gin.H{"error": "recipient user not found"})
+	case errors.Is(err, services.ErrNotificationTitleRequired),
+		errors.Is(err, services.ErrNotificationMessageRequired):
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	default:
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": defaultMessage})
+	}
+}
+
+func (handler *NotificationHandler) sendNotificationCreatedEvent(recipientID string, notification *models.NotificationWithUsers) {
 	event := map[string]any{
 		"type": "notification.created",
 		"data": notification,
@@ -173,7 +204,7 @@ func (handler *NotificationHandler) sendNotificationCreatedEvent(userID string, 
 		return
 	}
 
-	handler.hub.SendToUser(userID, eventData)
+	handler.hub.SendToUser(recipientID, eventData)
 }
 
 func getAuthenticatedUserID(ctx *gin.Context) (string, bool) {

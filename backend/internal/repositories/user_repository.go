@@ -22,12 +22,13 @@ func NewUserRepository(db *pgxpool.Pool) *UserRepository {
 
 func (repository *UserRepository) Create(ctx context.Context, name, email, passwordHash string) (*models.User, error) {
 	query := `
-		INSERT INTO users (name, email, password_hash)
-		VALUES ($1, $2, $3)
+		INSERT INTO users (name, email, password_hash, role)
+		VALUES ($1, $2, $3, 'user')
 		RETURNING
 			id::text,
 			name,
 			email,
+			role,
 			password_hash,
 			created_at
 	`
@@ -38,6 +39,7 @@ func (repository *UserRepository) Create(ctx context.Context, name, email, passw
 		&user.ID,
 		&user.Name,
 		&user.Email,
+		&user.Role,
 		&user.PasswordHash,
 		&user.CreatedAt,
 	)
@@ -54,6 +56,7 @@ func (repository *UserRepository) FindByEmail(ctx context.Context, email string)
 			id::text,
 			name,
 			email,
+			role,
 			password_hash,
 			created_at
 		FROM users
@@ -66,6 +69,7 @@ func (repository *UserRepository) FindByEmail(ctx context.Context, email string)
 		&user.ID,
 		&user.Name,
 		&user.Email,
+		&user.Role,
 		&user.PasswordHash,
 		&user.CreatedAt,
 	)
@@ -87,6 +91,7 @@ func (repository *UserRepository) FindByID(ctx context.Context, id string) (*mod
 			id::text,
 			name,
 			email,
+			role,
 			password_hash,
 			created_at
 		FROM users
@@ -99,6 +104,7 @@ func (repository *UserRepository) FindByID(ctx context.Context, id string) (*mod
 		&user.ID,
 		&user.Name,
 		&user.Email,
+		&user.Role,
 		&user.PasswordHash,
 		&user.CreatedAt,
 	)
@@ -114,6 +120,49 @@ func (repository *UserRepository) FindByID(ctx context.Context, id string) (*mod
 	return &user, nil
 }
 
+func (repository *UserRepository) List(ctx context.Context) ([]models.UserResponse, error) {
+	query := `
+		SELECT
+			id::text,
+			name,
+			email,
+			role,
+			created_at
+		FROM users
+		ORDER BY name ASC
+	`
+
+	rows, err := repository.db.Query(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list users: %w", err)
+	}
+	defer rows.Close()
+
+	users := make([]models.UserResponse, 0)
+
+	for rows.Next() {
+		var user models.UserResponse
+
+		if err := rows.Scan(
+			&user.ID,
+			&user.Name,
+			&user.Email,
+			&user.Role,
+			&user.CreatedAt,
+		); err != nil {
+			return nil, fmt.Errorf("failed to scan user: %w", err)
+		}
+
+		users = append(users, user)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("failed to iterate users: %w", err)
+	}
+
+	return users, nil
+}
+
 func (repository *UserRepository) UpdateProfile(ctx context.Context, id, name, email string) (*models.User, error) {
 	query := `
 		UPDATE users
@@ -124,6 +173,7 @@ func (repository *UserRepository) UpdateProfile(ctx context.Context, id, name, e
 			id::text,
 			name,
 			email,
+			role,
 			password_hash,
 			created_at
 	`
@@ -134,6 +184,7 @@ func (repository *UserRepository) UpdateProfile(ctx context.Context, id, name, e
 		&user.ID,
 		&user.Name,
 		&user.Email,
+		&user.Role,
 		&user.PasswordHash,
 		&user.CreatedAt,
 	)
