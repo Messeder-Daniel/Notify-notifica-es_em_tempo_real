@@ -1,10 +1,37 @@
 # Notify — Sistema de Notificações em Tempo Real
 
-Notify é um sistema de notificações em tempo real desenvolvido com **Golang**, **Gin**, **PostgreSQL**, **WebSocket**, **Vite**, **React**, **TypeScript** e **shadcn/ui**.
+Sistema full stack de notificações em tempo real, desenvolvido como projeto prático de backend e frontend.
 
-O projeto permite que usuários autenticados enviem notificações para outros usuários, recebam avisos em tempo real no navegador, respondam notificações, acompanhem status de leitura, conclusão e histórico de mensagens enviadas.
+O Notify permite que usuários autenticados enviem e recebam notificações em tempo real, acompanhem o status das mensagens, respondam notificações e consultem históricos.
 
----
+## 🚀 Principais funcionalidades
+
+- Cadastro e autenticação de usuários
+- Autenticação com JWT
+- Controle de acesso por perfil (`admin` e `user`)
+- Gerenciamento de usuários
+- Envio de notificações
+- Recebimento em tempo real via WebSocket
+- Notificações visuais com Sonner
+- Histórico de notificações enviadas
+- Marcação como lida/não lida
+- Marcação como concluída/reabertura
+- Respostas às notificações
+- Interface responsiva
+
+## 🏗️ Arquitetura
+
+```text
+Frontend
+React + TypeScript + Vite
+        │
+        │ HTTP / WebSocket
+        ▼
+Backend
+Go + Gin
+        │
+        ▼
+PostgreSQL
 
 ## Stack utilizada
 
@@ -20,72 +47,91 @@ O projeto permite que usuários autenticados enviem notificações para outros u
 
 ### Frontend
 
-- Vite
 - React
 - TypeScript
+- Vite
 - Tailwind CSS
 - shadcn/ui
 - Sonner
 - Lucide React
 
-### Infraestrutura local
+### Infraestrutura
 
 - Docker
 - Docker Compose
 
 ---
 
-## Funcionalidades
+Usuários de demonstração
 
-- Cadastro de usuários
-- Login com JWT
-- Atualização de perfil
-- Alteração de senha
-- Controle de papéis: `admin` e `user`
-- Painel administrativo para gerenciar usuários
-- Envio de notificações para usuários cadastrados
-- Recebimento de notificações em tempo real via WebSocket
-- Toasts em tempo real com Sonner
-- Listagem de notificações recebidas
-- Histórico de notificações enviadas
-- Marcar notificação como lida ou não lida
-- Marcar notificação como concluída ou reabrir
-- Responder notificações
-- Visualização de remetente e destinatário
-- Registro do momento de leitura e conclusão
-- Interface responsiva
+Para facilitar os testes locais, o banco cria usuários de demonstração na primeira inicialização.
+
+Papel	E-mail	Senha
+Admin	admin@example.com	Demo@2026
+User	user@example.com	Demo@2026
+
+> Essas credenciais são destinadas exclusivamente ao ambiente de demonstração local.
 
 ---
 
-## Usuários iniciais
+▶️ Como executar
 
-Ao subir o banco do zero, o projeto cria automaticamente dois usuários para teste:
+### Pré-requisitos
 
-| Papel | E-mail | Senha |
-|---|---|---|
-| Admin | admin@example.com | Demo@2026 |
-| User | user@example.com | Demo@2026 |
+Go
+Node.js
+npm
+Docker
+Docker Compose
 
-O usuário admin pode acessar a tela de gerenciamento de usuários e alterar papéis entre `admin` e `user`.
-
----
-
-## Pré-requisitos
-
-Antes de rodar o projeto, instale:
-
-- Go
-- Node.js
-- npm
-- Docker
-- Docker Compose
-
----
-
-## Como rodar o projeto
-
-### 1. Clonar o repositório
-
-```bash
+1. Clone o projeto
 git clone https://github.com/Messeder-Daniel/Notify-notifica-es_em_tempo_real.git
 cd Notify-notifica-es_em_tempo_real
+
+2. Inicie o PostgreSQL
+docker compose up -d
+
+3. Execute o backend
+cd backend
+go run ./cmd/api
+
+4. Instale as dependências do frontend
+
+Em outro terminal:
+
+cd frontend
+npm install
+
+5. Execute o frontend
+npm run dev
+
+Depois, acesse a aplicação pelo endereço exibido pelo Vite.
+
+🧠 O que este projeto demonstra
+
+O Notify foi desenvolvido para praticar conceitos importantes de desenvolvimento de software, incluindo:
+
+### APIs REST
+
+autenticação e autorização
+comunicação em tempo real com WebSocket
+persistência com PostgreSQL
+integração entre frontend e backend
+organização de código
+desenvolvimento com Git
+execução de ambientes locais com Docker
+
+📚 Aprendizados
+
+Este projeto permitiu aprofundar conhecimentos em desenvolvimento backend com Go, comunicação em tempo real, banco de dados relacional e integração com uma aplicação frontend em React e TypeScript.
+
+🔮 Próximos passos
+
+- Evoluir testes automatizados
+- Melhorar observabilidade
+- Adicionar novas regras de notificação
+- Avaliar deploy em ambiente cloud
+
+
+👨‍💻 Desenvolvido por Daniel Messeder
+
