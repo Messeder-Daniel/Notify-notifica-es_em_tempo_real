@@ -21,8 +21,8 @@ END $$;
 
 INSERT INTO users (name, email, password_hash, role)
 VALUES
-    ('Daniel Messeder', 'messederdaniel@outlook.com', crypt('Teste@2026', gen_salt('bf')), 'admin'),
-    ('Daniel Barreto', 'barretodaniel11971@hotmail.com', crypt('Teste@2026', gen_salt('bf')), 'user')
+    ('Daniel Messeder', 'admin@example.com', crypt('Demo@2026', gen_salt('bf')), 'admin'),
+    ('Daniel Barreto', 'user@example.com', crypt('Demo@2026', gen_salt('bf')), 'user')
 ON CONFLICT (email)
 DO UPDATE SET
     name = EXCLUDED.name,
@@ -65,7 +65,7 @@ SET sender_id = COALESCE(
     (
         SELECT id
         FROM users
-        WHERE email = 'messederdaniel@outlook.com'
+        WHERE email = 'admin@example.com'
         LIMIT 1
     ),
     recipient_id

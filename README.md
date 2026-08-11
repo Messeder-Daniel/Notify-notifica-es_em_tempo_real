@@ -63,8 +63,8 @@ Ao subir o banco do zero, o projeto cria automaticamente dois usuários para tes
 
 | Papel | E-mail | Senha |
 |---|---|---|
-| Admin | messederdaniel@outlook.com | Teste@2026 |
-| User | barretodaniel11971@hotmail.com | Teste@2026 |
+| Admin | admin@exemple.com | Demo@2026 |
+| User | user@exemple.com | Demo@2026 |
 
 O usuário admin pode acessar a tela de gerenciamento de usuários e alterar papéis entre `admin` e `user`.
 

@@ -572,14 +572,13 @@ export function App() {
                       id="login-email"
                       name="email"
                       type="email"
-                      defaultValue="messederdaniel@outlook.com"
                       required
                     />
                   </div>
 
                   <div className="grid gap-2">
                     <Label htmlFor="login-password">Senha</Label>
-                    <Input id="login-password" name="password" type="password" defaultValue="Teste@2026" required />
+                    <Input id="login-password" name="password" type="password" required />
                   </div>
 
                   <Button type="submit" disabled={isLoading}>
@@ -587,9 +586,6 @@ export function App() {
                   </Button>
                 </form>
 
-                <p className="mt-4 text-xs text-slate-500">
-                  Admin: <strong>messederdaniel@outlook.com</strong> / <strong>Teste@2026</strong>
-                </p>
               </TabsContent>
 
               <TabsContent value="register">
@@ -878,7 +874,7 @@ function ComposePage({
                 id="recipient-email"
                 name="recipient_email"
                 type="email"
-                placeholder="barretodaniel11971@hotmail.com"
+                placeholder="destinatario@exemple.com"
                 required
               />
             </div>
